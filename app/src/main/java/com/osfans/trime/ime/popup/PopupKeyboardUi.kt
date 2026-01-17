@@ -134,7 +134,7 @@ class PopupKeyboardUi(
         columnCount = (keyCount / rowCount).roundToInt()
 
         focusRow = 0
-        focusColumn = calcInitialFocusedColumn(columnCount, keyWidth, outerBounds, triggerBounds)
+        focusColumn = keys.indexOfFirst { it.endsWith("_focused") }
     }
 
     /**
@@ -169,7 +169,7 @@ class PopupKeyboardUi(
     override val offsetX = ((triggerBounds.width() - keyWidth) / 2) - (keyWidth * focusColumn)
     override val offsetY = (triggerBounds.height() - popupHeight) - (keyHeight * (rowCount - 1))
 
-    private val columnOrder = createColumnOrder(columnCount, focusColumn)
+    private val columnOrder = IntArray(keys.size) { it }
 
     /**
      * row with smaller index displays at bottom.
@@ -184,9 +184,7 @@ class PopupKeyboardUi(
      * ```
      * in which `0` indicates default focus
      */
-    private val keyOrders = Array(rowCount) { row ->
-        IntArray(columnCount) { col -> row * columnCount + columnOrder[col] }
-    }
+    private val keyOrders = arrayOf(columnOrder)
 
     private var focusedIndex = keyOrders[focusRow][focusColumn]
 
