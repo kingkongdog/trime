@@ -5,12 +5,6 @@
 pluginManagement {
     includeBuild("build-logic")
     repositories {
-        maven { url=uri ("https://jitpack.io") }
-        maven { url=uri ("https://maven.aliyun.com/repository/releases") }
-        maven { url=uri ("https://maven.aliyun.com/repository/google") }
-        maven { url=uri ("https://maven.aliyun.com/repository/central") }
-        maven { url=uri ("https://maven.aliyun.com/repository/gradle-plugin") }
-        maven { url=uri ("https://maven.aliyun.com/repository/public") }
         gradlePluginPortal()
         google()
         mavenCentral()
@@ -20,12 +14,6 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        maven { url=uri ("https://jitpack.io") }
-        maven { url=uri ("https://maven.aliyun.com/repository/releases") }
-        maven { url=uri ("https://maven.aliyun.com/repository/google") }
-        maven { url=uri ("https://maven.aliyun.com/repository/central") }
-        maven { url=uri ("https://maven.aliyun.com/repository/gradle-plugin") }
-        maven { url=uri ("https://maven.aliyun.com/repository/public") }
         google()
         mavenCentral()
         maven("https://jitpack.io")
