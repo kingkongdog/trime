@@ -3,14 +3,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 name: My
+
 on:
   workflow_dispatch:
 
 env:
   CI_NAME: My CI
+
 jobs:
   build:
-    if: ${{ github.repository == 'kingkongdog/trime' && github.ref == 'refs/heads/develop' }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -46,21 +47,25 @@ jobs:
           path: "app/prebuilt"
           key: ${{ runner.os }}-trime-jni-release-${{ steps.cache-hash.outputs.native-cache-hash }}
 
-      # - name: Setup Keystore
-      #   run: |
-      #     cat << EOF > keystore.properties
-      #     keyBase64=${{ secrets.SIGNING_KEY }}
-      #     storePassword=${{ secrets.KEY_STORE_PASSWORD }}
-      #     keyAlias=${{ secrets.ALIAS }}
-      #     keyPassword=${{ secrets.KEY_PASSWORD }}
-      #     EOF
+      - name: Setup Keystore
+        run: |
+          cat << EOF > keystore.properties
+          keyBase64=${{ secrets.SIGNING_KEY }}
+          storePassword=${{ secrets.KEY_STORE_PASSWORD }}
+          keyAlias=${{ secrets.ALIAS }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          EOF
 
       - name: Build Trime
-        run: make debug
+        run: make release
+
+      - name: Add JNI cache
+        if: ${{ !steps.jni-cache.outputs.cache-hit }}
+        run: cp -R app/build/intermediates/merged_native_libs/release/mergeReleaseNativeLibs/out/lib app/prebuilt
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: trime
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/release/*.apk
           retention-days: 3
