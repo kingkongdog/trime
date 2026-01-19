@@ -65,14 +65,15 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
 
     // 3. 动态注入 Preference 按钮
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        super.onCreatePreferences(savedInstanceState)
+        super.onCreatePreferences(savedInstanceState, rootKey)
 
         // 按钮 A：授权目录
         val authPref = Preference(requireContext()).apply {
             key = "saf_auth_folder"
             title = "授权 rime 文件夹"
             summary = "严格模式下必须先指定并授权 rime 存放目录"
-            order = -101
+            order = 998
+            isIconSpaceReserved = false
             setOnPreferenceClickListener {
                 folderPickerLauncher.launch(null)
                 true
@@ -84,7 +85,8 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             key = "saf_import_file"
             title = "导入文件 (SAF)"
             summary = "将文件安全地拷贝至已授权的目录"
-            order = -100
+            order = 999
+            isIconSpaceReserved = false
             setOnPreferenceClickListener {
                 importFileLauncher.launch("*/*")
                 true
