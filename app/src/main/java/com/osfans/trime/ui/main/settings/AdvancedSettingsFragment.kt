@@ -67,21 +67,28 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         super.onCreatePreferences(savedInstanceState, rootKey)
 
+        val context = requireContext()
+
         // 按钮 A：授权目录
-        val authPref = Preference(requireContext()).apply {
+        val authPref = Preference(context).apply {
             key = "saf_auth_folder"
             title = "授权 rime 文件夹"
             summary = "严格模式下必须先指定并授权 rime 存放目录"
             order = 998
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
-                folderPickerLauncher.launch(null)
+                // 检查是否已经存在授权
+                if (context.contentResolver.persistedUriPermissions.isNotEmpty()) {
+                    Toast.makeText(context, "已经授权过 rime 目录，无需重复操作", Toast.LENGTH_SHORT).show()
+                } else {
+                    folderPickerLauncher.launch(null)
+                }
                 true
             }
         }
 
         // 按钮 B：选择并导入文件
-        val importPref = Preference(requireContext()).apply {
+        val importPref = Preference(context).apply {
             key = "saf_import_file"
             title = "导入文件 (SAF)"
             summary = "将文件安全地拷贝至已授权的目录"
@@ -111,7 +118,12 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         }
 
         try {
-            val fileName = getFileName(sourceUri) ?: "imported_config.yaml"
+            val fileName = getFileName(sourceUri)
+
+            if (fileName.isNullOrBlank()) {
+                Toast.makeText(context, "错误：无法解析文件名，导入中止", Toast.LENGTH_LONG).show()
+                return
+            }
             
             // 将 TreeUri 包装为 DocumentFile 目录对象
             val rootDoc = DocumentFile.fromTreeUri(context, persistedUri)
