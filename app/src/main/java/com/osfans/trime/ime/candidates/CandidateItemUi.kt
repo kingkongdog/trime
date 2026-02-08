@@ -36,6 +36,7 @@ import splitties.views.dsl.core.view
 import splitties.views.dsl.core.wrapContent
 import splitties.views.gravityCenter
 import splitties.views.dip
+import splitties.views.updatePadding
 
 class CandidateItemUi(
     override val ctx: Context,
