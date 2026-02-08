@@ -35,6 +35,7 @@ import splitties.views.dsl.core.matchParent
 import splitties.views.dsl.core.view
 import splitties.views.dsl.core.wrapContent
 import splitties.views.gravityCenter
+import splitties.views.dip
 
 class CandidateItemUi(
     override val ctx: Context,
@@ -67,6 +68,7 @@ class CandidateItemUi(
             isSingleLine = true
             gravity = gravityCenter
             scaleMode = AutoScaleTextView.Mode.Proportional
+            paddingTop = dip(2)
         }
 
     private val content = constraintLayout {
