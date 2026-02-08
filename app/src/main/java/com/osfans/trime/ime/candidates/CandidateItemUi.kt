@@ -69,6 +69,11 @@ class CandidateItemUi(
             isSingleLine = true
             gravity = gravityCenter
             scaleMode = AutoScaleTextView.Mode.Proportional
+
+            // --- 新增代码：设置 2dp 的 paddingTop ---
+            val px = (2 * ctx.resources.displayMetrics.density).toInt()
+            setPadding(paddingLeft, px, paddingRight, paddingBottom)
+            // --------------------------------------
         }
 
     private val content = constraintLayout {
@@ -119,8 +124,8 @@ class CandidateItemUi(
         // updatePadding(top = dip(2))
         // 使用原生 setPadding 替代 updatePadding
         // 使用 ctx.resources 计算 dp 替代 dip(2)
-        val padding2dp = (2 * ctx.resources.displayMetrics.density).toInt()
-        setPadding(paddingLeft, padding2dp, paddingRight, paddingBottom)
+        // val padding2dp = (2 * ctx.resources.displayMetrics.density).toInt()
+        // setPadding(paddingLeft, padding2dp, paddingRight, paddingBottom)
         add(
             content,
             lParams(matchParent, matchParent) {
