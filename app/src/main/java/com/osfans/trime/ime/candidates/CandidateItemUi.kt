@@ -71,7 +71,7 @@ class CandidateItemUi(
             scaleMode = AutoScaleTextView.Mode.Proportional
 
             // --- 新增代码：设置 2dp 的 paddingTop ---
-            val px = (2 * ctx.resources.displayMetrics.density).toInt()
+            val px = (4 * ctx.resources.displayMetrics.density).toInt()
             setPadding(paddingLeft, px, paddingRight, paddingBottom)
             // --------------------------------------
         }
@@ -91,7 +91,7 @@ class CandidateItemUi(
                 text,
                 lParams {
                     centerInParent()
-                    topMargin = (2 * ctx.resources.displayMetrics.density).toInt()
+                    topMargin = (4 * ctx.resources.displayMetrics.density).toInt()
                     width = wrapContent
                 },
             )
