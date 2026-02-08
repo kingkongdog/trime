@@ -68,7 +68,6 @@ class CandidateItemUi(
             isSingleLine = true
             gravity = gravityCenter
             scaleMode = AutoScaleTextView.Mode.Proportional
-            paddingTop = dip(2)
         }
 
     private val content = constraintLayout {
@@ -116,7 +115,7 @@ class CandidateItemUi(
          * candidate long press feedback is handled by `showCandidateActionMenu`
          */
         longPressFeedbackEnabled = false
-
+        updatePadding(top = dip(2))
         add(
             content,
             lParams(matchParent, matchParent) {
