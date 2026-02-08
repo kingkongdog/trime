@@ -91,6 +91,7 @@ class CandidateItemUi(
                 text,
                 lParams {
                     centerInParent()
+                    topMargin = (2 * ctx.resources.displayMetrics.density).toInt()
                     width = wrapContent
                 },
             )
