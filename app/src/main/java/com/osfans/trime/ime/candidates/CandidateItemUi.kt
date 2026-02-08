@@ -116,7 +116,11 @@ class CandidateItemUi(
          * candidate long press feedback is handled by `showCandidateActionMenu`
          */
         longPressFeedbackEnabled = false
-        updatePadding(top = dip(2))
+        // updatePadding(top = dip(2))
+        // 使用原生 setPadding 替代 updatePadding
+        // 使用 ctx.resources 计算 dp 替代 dip(2)
+        val padding2dp = (2 * ctx.resources.displayMetrics.density).toInt()
+        setPadding(paddingLeft, padding2dp, paddingRight, paddingBottom)
         add(
             content,
             lParams(matchParent, matchParent) {
