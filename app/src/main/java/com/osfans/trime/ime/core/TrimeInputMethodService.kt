@@ -311,7 +311,8 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
                 return
             }
             when (val action = imeOptions and EditorInfo.IME_MASK_ACTION) {
-                EditorInfo.IME_ACTION_UNSPECIFIED, EditorInfo.IME_ACTION_NONE -> currentInputConnection.commitText("\n", 1)
+                // EditorInfo.IME_ACTION_UNSPECIFIED, EditorInfo.IME_ACTION_NONE -> currentInputConnection.commitText("\n", 1)
+                EditorInfo.IME_ACTION_UNSPECIFIED, EditorInfo.IME_ACTION_NONE -> sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
                 else -> currentInputConnection.performEditorAction(action)
             }
         }
