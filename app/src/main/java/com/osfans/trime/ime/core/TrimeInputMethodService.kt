@@ -302,8 +302,9 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
                 return
             }
             if (imeOptions.hasFlag(EditorInfo.IME_FLAG_NO_ENTER_ACTION)) {
-                val ic = currentInputConnection
-                ic?.commitText("\n", 1)
+                // val ic = currentInputConnection
+                // ic?.commitText("\n", 1)
+                sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
                 return
             }
             if (!actionLabel.isNullOrEmpty() && actionId != EditorInfo.IME_ACTION_UNSPECIFIED) {
