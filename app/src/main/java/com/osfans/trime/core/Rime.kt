@@ -216,14 +216,19 @@ class Rime :
     private val asciiTipsText: String
         get() {
             val status = getRimeStatus()
+            // return if (status.isAsciiMode) {
+            //     "En"
+            // } else if (status.schemaName.isNotEmpty() &&
+            //     !status.schemaName.startsWith('.')
+            // ) {
+            //     status.schemaName.take(2)
+            // } else {
+            //     ""
+            // }
             return if (status.isAsciiMode) {
                 "En"
-            } else if (status.schemaName.isNotEmpty() &&
-                !status.schemaName.startsWith('.')
-            ) {
-                status.schemaName.take(2)
             } else {
-                ""
+                "中"
             }
         }
 
