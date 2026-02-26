@@ -78,15 +78,15 @@ class CandidateItemUi(
 
     private val content = constraintLayout {
         if (theme.generalStyle.commentOnTop) {
-            add(
-                comment,
-                lParams {
-                    centerHorizontally()
-                    topOfParent()
-                    width = wrapContent
-                    matchConstraintPercentHeight = 0.3f // TODO: new param for customization
-                },
-            )
+            // add(
+            //     comment,
+            //     lParams {
+            //         centerHorizontally()
+            //         topOfParent()
+            //         width = wrapContent
+            //         matchConstraintPercentHeight = 0.3f // TODO: new param for customization
+            //     },
+            // )
             add(
                 text,
                 lParams {
@@ -105,15 +105,15 @@ class CandidateItemUi(
                     endToStartOf(comment)
                 },
             )
-            add(
-                comment,
-                lParams(wrapContent, wrapContent) {
-                    startToEndOf(text)
-                    endOfParent()
-                    baselineToBaselineOf(text)
-                    horizontalChainStyle = ConstraintLayout.LayoutParams.CHAIN_PACKED
-                },
-            )
+            // add(
+            //     comment,
+            //     lParams(wrapContent, wrapContent) {
+            //         startToEndOf(text)
+            //         endOfParent()
+            //         baselineToBaselineOf(text)
+            //         horizontalChainStyle = ConstraintLayout.LayoutParams.CHAIN_PACKED
+            //     },
+            // )
         }
     }
 
