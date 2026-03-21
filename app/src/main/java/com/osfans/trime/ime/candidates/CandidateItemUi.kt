@@ -6,7 +6,7 @@ package com.osfans.trime.ime.candidates
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.drawable.ColorDrawable
+import android.graphics.Color
 import android.view.View
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.isGone
@@ -16,7 +16,8 @@ import com.osfans.trime.data.theme.FontManager
 import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.ime.core.AutoScaleTextView
 import com.osfans.trime.ime.keyboard.GestureFrame
-import com.osfans.trime.util.pressHighlightDrawable
+import com.osfans.trime.util.roundedRippleDrawable
+import splitties.dimensions.dp
 import splitties.views.dsl.constraintlayout.baselineToBaselineOf
 import splitties.views.dsl.constraintlayout.centerHorizontally
 import splitties.views.dsl.constraintlayout.centerInParent
@@ -121,7 +122,6 @@ class CandidateItemUi(
         /**
          * candidate long press feedback is handled by `showCandidateActionMenu`
          */
-        longPressFeedbackEnabled = false
         // updatePadding(top = dip(2))
         // 使用原生 setPadding 替代 updatePadding
         // 使用 ctx.resources 计算 dp 替代 dip(2)
@@ -142,16 +142,13 @@ class CandidateItemUi(
     ) {
         val tColor = if (highlighted) hlTextColor else textColor
         val cColor = if (highlighted) hlCommentColor else commentColor
+        val cornerRadius = ctx.dp(theme.generalStyle.candidateCornerRadius)
+        val contentColor = if (highlighted) hlBackColor else Color.TRANSPARENT
         text.text = item.text
         text.setTextColor(tColor)
         comment.text = if (theme.generalStyle.commentOnTop) item.comment else " ${item.comment}"
         comment.setTextColor(cColor)
         comment.isGone = item.comment.isEmpty()
-        root.background =
-            if (highlighted) {
-                ColorDrawable(hlBackColor)
-            } else {
-                pressHighlightDrawable(hlBackColor)
-            }
+        root.background = roundedRippleDrawable(hlBackColor, cornerRadius, contentColor)
     }
 }
