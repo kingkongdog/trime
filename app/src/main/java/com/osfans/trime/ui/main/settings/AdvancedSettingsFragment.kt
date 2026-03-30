@@ -114,8 +114,6 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         super.onCreatePreferences(savedInstanceState, rootKey)
 
         val context = requireContext()
-        val resolver = context.contentResolver
-        val persistedUri = resolver.persistedUriPermissions.firstOrNull()?.uri
 
         // 按钮 A：授权目录
         val authPref = Preference(context).apply {
@@ -267,7 +265,10 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         preferenceScreen.addPreference(upgradeWanXiangGramPref)
         preferenceScreen.addPreference(upgradeWanXiangSchemaPref)
 
-        viewLifecycleOwner.lifecycleScope.launch {
+        // viewLifecycleOwner.lifecycleScope 闪退：Can't access the Fragment View's LifecycleOwner
+        lifecycleScope.launch {
+            val resolver = context.contentResolver
+            val persistedUri = resolver.persistedUriPermissions.firstOrNull()?.uri
             if (persistedUri != null) {
                 upgradeWanXiangSchemaPref.title = "$originalSchemaTitle（版本：${readWanXiangVersion(context, persistedUri)}）"
             }
