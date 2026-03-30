@@ -207,7 +207,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         // 按钮 D：升级 wanxiang 输入方案
         val upgradeWanXiangSchemaPref = Preference(context).apply {
             key = "upgrade_wanxiang_schema"
-            title = "$originalSchemaTitle（版本：${readWanXiangVersion(context, persistedUri)}）"
+            title = originalSchemaTitle
             summary = originalSchemaSummary
             order = 1001
             isIconSpaceReserved = false
@@ -228,6 +228,8 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                 // 使用主线程协程
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
+                        val originalVersion = readWanXiangVersion(context, persistedUri)
+
                         performUpgradeSchema(context, persistedUri, this@apply)
 
                         // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
@@ -243,7 +245,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                             launch(Dispatchers.Main) {
                                 title = "$originalSchemaTitle（部署完成）"
                                 Toast.makeText(context, "wanxiang 输入方案升级完成！", Toast.LENGTH_SHORT).show()
-                                title = "$originalSchemaTitle（版本：${readWanXiangVersion(context, persistedUri)}）"
+                                title = "$originalSchemaTitle（版本：${readWanXiangVersion(context, persistedUri)} from $originalVersion）"
                                 summary = originalSchemaSummary
                             }
                         }
@@ -264,6 +266,12 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         preferenceScreen.addPreference(importPref)
         preferenceScreen.addPreference(upgradeWanXiangGramPref)
         preferenceScreen.addPreference(upgradeWanXiangSchemaPref)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            if (persistedUri != null) {
+                upgradeWanXiangSchemaPref.title = "$originalSchemaTitle（版本：${readWanXiangVersion(context, persistedUri)}）"
+            }
+        }
     }
 
     private suspend fun readWanXiangVersion(context: Context, rootUri: Uri): String = withContext(Dispatchers.IO) {
