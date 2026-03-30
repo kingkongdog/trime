@@ -114,6 +114,8 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         super.onCreatePreferences(savedInstanceState, rootKey)
 
         val context = requireContext()
+        val resolver = context.contentResolver
+        val persistedUri = resolver.persistedUriPermissions.firstOrNull()?.uri
 
         // 按钮 A：授权目录
         val authPref = Preference(context).apply {
@@ -205,7 +207,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         // 按钮 D：升级 wanxiang 输入方案
         val upgradeWanXiangSchemaPref = Preference(context).apply {
             key = "upgrade_wanxiang_schema"
-            title = originalSchemaTitle
+            title = "$originalSchemaTitle（版本：${readWanXiangVersion(context, persistedUri)}）"
             summary = originalSchemaSummary
             order = 1001
             isIconSpaceReserved = false
