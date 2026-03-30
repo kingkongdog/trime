@@ -130,7 +130,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         // 按钮 B：选择模型文件并导入到 rime 文件夹
         val importPref = Preference(context).apply {
             key = "saf_import_file"
-            title = "导入模型文件"
+            title = "导入 wanxiang 模型文件"
             summary = "手动选择模型文件并拷贝至 rime 文件夹"
             order = 999
             isIconSpaceReserved = false
@@ -181,6 +181,8 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                             launch(Dispatchers.Main) {
                                 title = "$originalTitle（部署完成）"
                                 Toast.makeText(context, "wanxiang 模型升级完成！", Toast.LENGTH_SHORT).show()
+                                title = originalTitle
+                                summary = originalSummary
                             }
                         }
                     } catch (e: Exception) {
@@ -189,8 +191,6 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         e.printStackTrace()
                     } finally {
                         delay(3000)
-                        title = originalTitle
-                        summary = originalSummary
                         isEnabled = true
                     }
                 }
@@ -239,6 +239,8 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                             launch(Dispatchers.Main) {
                                 title = "$originalTitle（部署完成）"
                                 Toast.makeText(context, "wanxiang 输入方案升级完成！", Toast.LENGTH_SHORT).show()
+                                title = originalTitle
+                                summary = originalSummary
                             }
                         }
                     } catch (e: Exception) {
@@ -247,8 +249,6 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         e.printStackTrace()
                     } finally {
                         delay(3000)
-                        title = originalTitle
-                        summary = originalSummary
                         isEnabled = true
                     }
                 }
