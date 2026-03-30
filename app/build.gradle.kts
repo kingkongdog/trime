@@ -191,6 +191,8 @@ dependencies {
     implementation(libs.splitties.views.recyclerview)
     implementation(libs.aboutlibraries.core)
     implementation(libs.iconics.core)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
     implementation(libs.community.material.typeface) {
         artifact { type = "aar" }
     }
