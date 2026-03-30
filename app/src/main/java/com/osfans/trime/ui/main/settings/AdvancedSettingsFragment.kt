@@ -148,7 +148,52 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             order = 1000
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
-                importFileLauncher.launch("*/*")
+                // 1. 获取之前授权过的 Rime 根目录 Uri
+                val context = requireContext()
+                val resolver = context.contentResolver
+                val persistedUri = resolver.persistedUriPermissions.firstOrNull()?.uri
+
+                if (persistedUri == null) {
+                    Toast.makeText(context, "请先授权 rime 文件夹", Toast.LENGTH_LONG).show()
+                    return@setOnPreferenceClickListener true
+                }
+
+                // 禁止重复点击
+                isEnabled = false
+                val originalTitle = title.toString()
+                val originalSummary = summary.toString()
+
+                // 使用主线程协程
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        performUpgradeGram(context, persistedUri, this@apply)
+
+                        // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
+                        viewModel.rime.launchOnReady {
+                            // 切换到主线程更新“部署中”状态
+                            launch(Dispatchers.Main) {
+                                title = "$originalTitle（部署中。。。）"
+                            }
+
+                            it.deploy()
+
+                            // 部署完成后，再次切回主线程更新结果
+                            launch(Dispatchers.Main) {
+                                title = "$originalTitle（部署完成）"
+                                Toast.makeText(context, "wanxiang 模型升级完成！", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        title = "$originalTitle（升级失败）"
+                        summary = "错误: ${e.message}"
+                        e.printStackTrace()
+                    } finally {
+                        delay(3000)
+                        title = originalTitle
+                        summary = originalSummary
+                        isEnabled = true
+                    }
+                }
                 true
             }
         }
@@ -179,7 +224,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                 // 使用主线程协程
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
-                        performUpgrade(context, persistedUri, this@apply)
+                        performUpgradeSchema(context, persistedUri, this@apply)
 
                         // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
                         viewModel.rime.launchOnReady {
@@ -218,7 +263,59 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
     }
 
     @SuppressLint("DefaultLocale")
-    private suspend fun performUpgrade(context: Context, rootUri: Uri, pref: Preference) = withContext(Dispatchers.IO) {
+    private suspend fun performUpgradeGram(context: Context, rootUri: Uri, pref: Preference) = withContext(Dispatchers.IO) {
+        val client = OkHttpClient()
+        val url = "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram"
+        val rootFolder = DocumentFile.fromTreeUri(context, rootUri) ?: throw Exception("无法解析 Rime 目录")
+
+        val originalTitle = pref.title
+
+        val request = Request.Builder().url(url).build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw Exception("网络请求失败: ${response.code}")
+
+            val body = response.body ?: throw Exception("下载内容为空")
+            val totalSize = body.contentLength()
+            val inputStream = body.byteStream()
+
+            // 包装流以监听下载进度
+            val progressStream = ProgressInputStream(inputStream) { bytesRead ->
+                // 计算 KB 和 MB
+                val kb = bytesRead / 1024.0
+                val mb = kb / 1024.0
+
+                CoroutineScope(Dispatchers.Main).launch {
+                    if (totalSize > 0) {
+                        // 如果能获取总大小，显示百分比
+                        val percent = (bytesRead * 100 / totalSize).toInt()
+                        pref.title = "$originalTitle（下载中: $percent%）"
+                    } else {
+                        // 如果总大小未知（GitHub 常见情况），显示已下载大小
+                        if (mb >= 1) {
+                            // 超过 1MB 显示 MB，保留两位小数
+                            pref.title = String.format("${originalTitle}（下载中: %.2f MB）", mb)
+                        } else {
+                            // 不足 1MB 显示 KB，保留两位小数
+                            pref.title = String.format("${originalTitle}（下载中: %.2f KB）", kb)
+                        }
+                    }
+                }
+            }
+
+            // 定位并创建目标文件
+            val fileName = "wanxiang-lts-zh-hans.gram"
+            val targetFile = rootFolder.findFile(fileName) ?: rootFolder.createFile("application/octet-stream", fileName)
+            // "wt" 覆盖写入
+            targetFile?.uri?.let { uri ->
+                context.contentResolver.openOutputStream(uri, "wt")?.use { output ->
+                    progressStream.copyTo(output)
+                }
+            }
+        }
+    }
+
+    @SuppressLint("DefaultLocale")
+    private suspend fun performUpgradeSchema(context: Context, rootUri: Uri, pref: Preference) = withContext(Dispatchers.IO) {
         val client = OkHttpClient()
         val url = "https://codeload.github.com/kingkongdog/rime_wanxiang/zip/refs/heads/wanxiang"
         val rootFolder = DocumentFile.fromTreeUri(context, rootUri) ?: throw Exception("无法解析 Rime 目录")
