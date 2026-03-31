@@ -72,7 +72,28 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
     private val originalThemeTitle = "升级 Q 主题"
     private val originalThemeSummary = "下载最新的 Q 主题到 rime 文件夹，并部署"
 
-    private var rootUri = requireContext().contentResolver.persistedUriPermissions.firstOrNull()?.uri
+    // java.lang.IllegalStateException: Fragment AdvancedSettingsFragment{7b76595} (05a0eac8-8cbc-45fb-a130-5f4a9ac5b3fa) not attached to a context.
+    // private var rootUri = requireContext().contentResolver.persistedUriPermissions.firstOrNull()?.uri
+    // 只有在第一次被使用时才会执行，此时 context 肯定已经存在了
+    // lazy 只支持 val
+//    private val rootUri: Uri? by lazy {
+//        requireContext().contentResolver.persistedUriPermissions
+//            .firstOrNull()?.uri
+//    }
+
+    private var _rootUri: Uri? = null // 幕后属性
+
+    var rootUri: Uri?
+        get() {
+            // 如果还没值，就去系统查一次
+            if (_rootUri == null) {
+                _rootUri = requireContext().contentResolver.persistedUriPermissions.firstOrNull()?.uri
+            }
+            return _rootUri
+        }
+        set(value) {
+            _rootUri = value // 允许手动修改
+        }
 
     // 1. 用于授权 rime 目录的 Launcher (OpenDocumentTree)
     private val folderPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
