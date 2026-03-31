@@ -387,22 +387,14 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                 // 计算 KB 和 MB
                 val kb = bytesRead / 1024.0
                 val mb = kb / 1024.0
+                // 始终显示已下载大小，超过 1MB 显示 MB，不足 1MB 显示 KB，保留两位小数
+                val size = if (mb >= 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
+                // 如果能获取总大小，显示百分比
+                val percent = if (totalSize > 0) String.format("，%.1f%", bytesRead * 100 / totalSize) else ""
+                val title = "$originalGramTitle（下载中：$size$percent）"
 
                 CoroutineScope(Dispatchers.Main).launch {
-                    if (totalSize > 0) {
-                        // 如果能获取总大小，显示百分比
-                        val percent = (bytesRead * 100 / totalSize).toInt()
-                        pref.title = "$originalGramTitle（下载中: $percent%）"
-                    } else {
-                        // 如果总大小未知（GitHub 常见情况），显示已下载大小
-                        if (mb >= 1) {
-                            // 超过 1MB 显示 MB，保留两位小数
-                            pref.title = String.format("${originalGramTitle}（下载中: %.2f MB）", mb)
-                        } else {
-                            // 不足 1MB 显示 KB，保留两位小数
-                            pref.title = String.format("${originalGramTitle}（下载中: %.2f KB）", kb)
-                        }
-                    }
+                    pref.title = title
                 }
             }
 
@@ -436,22 +428,14 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                 // 计算 KB 和 MB
                 val kb = bytesRead / 1024.0
                 val mb = kb / 1024.0
+                // 始终显示已下载大小，超过 1MB 显示 MB，不足 1MB 显示 KB，保留两位小数
+                val size = if (mb >= 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
+                // 如果能获取总大小，显示百分比
+                val percent = if (totalSize > 0) String.format("，%.1f%", bytesRead * 100 / totalSize) else ""
+                val title = "$originalTitle（下载中：$size$percent）"
 
                 CoroutineScope(Dispatchers.Main).launch {
-                    if (totalSize > 0) {
-                        // 如果能获取总大小，显示百分比
-                        val percent = (bytesRead * 100 / totalSize).toInt()
-                        pref.title = "$originalTitle（下载中: $percent%）"
-                    } else {
-                        // 如果总大小未知（GitHub 常见情况），显示已下载大小
-                        if (mb >= 1) {
-                            // 超过 1MB 显示 MB，保留两位小数
-                            pref.title = String.format("${originalTitle}（下载中: %.2f MB）", mb)
-                        } else {
-                            // 不足 1MB 显示 KB，保留两位小数
-                            pref.title = String.format("${originalTitle}（下载中: %.2f KB）", kb)
-                        }
-                    }
+                    pref.title = title
                 }
             }
 
