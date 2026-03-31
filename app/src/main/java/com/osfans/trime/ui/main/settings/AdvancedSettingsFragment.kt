@@ -411,7 +411,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         val url = "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram"
         val rootFolder = DocumentFile.fromTreeUri(context, rootUri!!) ?: throw Exception("无法解析 Rime 目录")
 
-        val request = Request.Builder().url(url).build()
+        val request = Request.Builder().url(url).header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36").build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw Exception("网络请求失败: ${response.code}")
 
@@ -452,7 +452,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         val client = OkHttpClient()
         val rootFolder = DocumentFile.fromTreeUri(context, rootUri!!) ?: throw Exception("无法解析 Rime 目录")
 
-        val request = Request.Builder().url(url).build()
+        val request = Request.Builder().url(url).header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36").build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw Exception("网络请求失败: ${response.code}")
 
