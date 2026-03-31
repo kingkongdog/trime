@@ -68,6 +68,9 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
     private val originalSchemaTitle = "升级 wanxiang 输入方案"
     private val originalSchemaSummary = "下载最新的 wanxiang 输入方案到 rime 文件夹，并部署"
 
+    private val originalThemeTitle = "升级 Q 主题"
+    private val originalThemeSummary = "下载最新的 Q 主题到 rime 文件夹，并部署"
+
     // 1. 用于授权 rime 目录的 Launcher (OpenDocumentTree)
     private val folderPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
         uri?.let { treeUri ->
@@ -146,12 +149,70 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             }
         }
 
-        // 按钮 C：升级 wanxiang 模型
+        // 按钮 C：升级 Q 主题
+        val upgradeQThemePref = Preference(context).apply {
+            key = "upgrade_q_theme"
+            title = originalThemeTitle
+            summary = originalThemeSummary
+            order = 1000
+            isIconSpaceReserved = false
+            setOnPreferenceClickListener {
+                // 1. 获取之前授权过的 Rime 根目录 Uri
+                val context = requireContext()
+                val resolver = context.contentResolver
+                val persistedUri = resolver.persistedUriPermissions.firstOrNull()?.uri
+
+                if (persistedUri == null) {
+                    Toast.makeText(context, "请先授权 rime 文件夹", Toast.LENGTH_LONG).show()
+                    return@setOnPreferenceClickListener true
+                }
+
+                // 禁止重复点击
+                isEnabled = false
+
+                // 使用主线程协程
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        val originalVersion = readVersion(context, persistedUri, "q_version")
+
+                        performUpgradeSchemaAndTheme(context, persistedUri, this@apply, originalThemeTitle, "https://codeload.github.com/kingkongdog/trime-q-theme/zip/refs/heads/main")
+
+                        // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
+                        viewModel.rime.launchOnReady {
+                            // 切换到主线程更新“部署中”状态
+                            launch(Dispatchers.Main) {
+                                title = "$originalThemeTitle（部署中。。。）"
+                            }
+
+                            it.deploy()
+
+                            // 部署完成后，再次切回主线程更新结果
+                            launch(Dispatchers.Main) {
+                                title = "$originalThemeTitle（部署完成）"
+                                Toast.makeText(context, "Q 主题升级完成！", Toast.LENGTH_SHORT).show()
+                                title = "$originalThemeTitle（版本：${readVersion(context, persistedUri, "q_version")} from $originalVersion）"
+                                summary = originalThemeSummary
+                            }
+                        }
+                    } catch (e: Exception) {
+                        title = "$originalThemeTitle（升级失败）"
+                        summary = "错误: ${e.message}"
+                        e.printStackTrace()
+                    } finally {
+                        delay(3000)
+                        isEnabled = true
+                    }
+                }
+                true
+            }
+        }
+
+        // 按钮 D：升级 wanxiang 模型
         val upgradeWanXiangGramPref = Preference(context).apply {
             key = "upgrade_wanxiang_gram"
             title = originalGramTitle
             summary = originalGramSummary
-            order = 1000
+            order = 1001
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
                 // 1. 获取之前授权过的 Rime 根目录 Uri
@@ -202,12 +263,12 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             }
         }
 
-        // 按钮 D：升级 wanxiang 输入方案
+        // 按钮 E：升级 wanxiang 输入方案
         val upgradeWanXiangSchemaPref = Preference(context).apply {
             key = "upgrade_wanxiang_schema"
             title = originalSchemaTitle
             summary = originalSchemaSummary
-            order = 1001
+            order = 1002
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
                 // 1. 获取之前授权过的 Rime 根目录 Uri
@@ -226,9 +287,9 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                 // 使用主线程协程
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
-                        val originalVersion = readWanXiangVersion(context, persistedUri)
+                        val originalVersion = readVersion(context, persistedUri, "wanxiang_version")
 
-                        performUpgradeSchema(context, persistedUri, this@apply)
+                        performUpgradeSchemaAndTheme(context, persistedUri, this@apply, originalSchemaTitle, "https://codeload.github.com/kingkongdog/rime_wanxiang/zip/refs/heads/wanxiang")
 
                         // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
                         viewModel.rime.launchOnReady {
@@ -243,7 +304,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                             launch(Dispatchers.Main) {
                                 title = "$originalSchemaTitle（部署完成）"
                                 Toast.makeText(context, "wanxiang 输入方案升级完成！", Toast.LENGTH_SHORT).show()
-                                title = "$originalSchemaTitle（版本：${readWanXiangVersion(context, persistedUri)} from $originalVersion）"
+                                title = "$originalSchemaTitle（版本：${readVersion(context, persistedUri, "wanxiang_version")} from $originalVersion）"
                                 summary = originalSchemaSummary
                             }
                         }
@@ -262,6 +323,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
 
         preferenceScreen.addPreference(authPref)
         preferenceScreen.addPreference(importPref)
+        preferenceScreen.addPreference(upgradeQThemePref)
         preferenceScreen.addPreference(upgradeWanXiangGramPref)
         preferenceScreen.addPreference(upgradeWanXiangSchemaPref)
 
@@ -270,18 +332,27 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             val resolver = context.contentResolver
             val persistedUri = resolver.persistedUriPermissions.firstOrNull()?.uri
             if (persistedUri != null) {
-                upgradeWanXiangSchemaPref.title = "$originalSchemaTitle（版本：${readWanXiangVersion(context, persistedUri)}）"
+                upgradeQThemePref.title = "$originalThemeTitle（版本：${readVersion(context, persistedUri, "q_version")}）"
+            }
+        }
+
+        // viewLifecycleOwner.lifecycleScope 闪退：Can't access the Fragment View's LifecycleOwner
+        lifecycleScope.launch {
+            val resolver = context.contentResolver
+            val persistedUri = resolver.persistedUriPermissions.firstOrNull()?.uri
+            if (persistedUri != null) {
+                upgradeWanXiangSchemaPref.title = "$originalSchemaTitle（版本：${readVersion(context, persistedUri, "wanxiang_version")}）"
             }
         }
     }
 
-    private suspend fun readWanXiangVersion(context: Context, rootUri: Uri): String = withContext(Dispatchers.IO) {
+    private suspend fun readVersion(context: Context, rootUri: Uri, versionFile: String): String = withContext(Dispatchers.IO) {
         // 1. 获取根目录对象
         val rootFolder = DocumentFile.fromTreeUri(context, rootUri)
             ?: throw Exception("无法访问 Rime 文件夹")
 
         // 2. 寻找名为 "version" 的文件
-        val versionFile = rootFolder.findFile("version")
+        val versionFile = rootFolder.findFile(versionFile)
             ?: return@withContext "未知版本" // 如果文件不存在，返回默认值
 
         try {
@@ -348,9 +419,8 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
     }
 
     @SuppressLint("DefaultLocale")
-    private suspend fun performUpgradeSchema(context: Context, rootUri: Uri, pref: Preference) = withContext(Dispatchers.IO) {
+    private suspend fun performUpgradeSchemaAndTheme(context: Context, rootUri: Uri, pref: Preference, originalTitle: String, url: String) = withContext(Dispatchers.IO) {
         val client = OkHttpClient()
-        val url = "https://codeload.github.com/kingkongdog/rime_wanxiang/zip/refs/heads/wanxiang"
         val rootFolder = DocumentFile.fromTreeUri(context, rootUri) ?: throw Exception("无法解析 Rime 目录")
 
         val request = Request.Builder().url(url).build()
@@ -371,15 +441,15 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                     if (totalSize > 0) {
                         // 如果能获取总大小，显示百分比
                         val percent = (bytesRead * 100 / totalSize).toInt()
-                        pref.title = "$originalSchemaTitle（下载中: $percent%）"
+                        pref.title = "$originalTitle（下载中: $percent%）"
                     } else {
                         // 如果总大小未知（GitHub 常见情况），显示已下载大小
                         if (mb >= 1) {
                             // 超过 1MB 显示 MB，保留两位小数
-                            pref.title = String.format("${originalSchemaTitle}（下载中: %.2f MB）", mb)
+                            pref.title = String.format("${originalTitle}（下载中: %.2f MB）", mb)
                         } else {
                             // 不足 1MB 显示 KB，保留两位小数
-                            pref.title = String.format("${originalSchemaTitle}（下载中: %.2f KB）", kb)
+                            pref.title = String.format("${originalTitle}（下载中: %.2f KB）", kb)
                         }
                     }
                 }
