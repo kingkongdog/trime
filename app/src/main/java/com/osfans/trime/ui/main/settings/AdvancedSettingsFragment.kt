@@ -264,12 +264,12 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         val originalVersion = getGramFileDate(context)
 
                         // 1. 先下载
-                        val gram = downloadToTempFile(context,
+                        downloadToTempFile(context,
                             "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram",
                             "gram_temp.gram", this@apply, originalGramTitle)
 
                         // 2. 移动到 rime 文件夹
-                        moveToSAF(context, gram, this@apply, originalGramTitle, "wanxiang-lts-zh-hans.gram")
+                        moveToSAF(context, this@apply, originalGramTitle, "gram_temp.gram", "wanxiang-lts-zh-hans.gram")
 
                         // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
                         viewModel.rime.launchOnReady {
@@ -524,16 +524,17 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
     }
 
     @SuppressLint("DefaultLocale")
-    private suspend fun moveToSAF(context: Context, tempFile: File, pref: Preference, originalTitle: String, targetFileName: String) = withContext(Dispatchers.IO) {
+    private suspend fun moveToSAF(context: Context, pref: Preference, originalTitle: String, sourceFileName: String, targetFileName: String) = withContext(Dispatchers.IO) {
         val rootFolder = DocumentFile.fromTreeUri(context, rootUri!!) ?: throw Exception("无法解析 Rime 目录")
+        val sourceFile = File(context.cacheDir, sourceFileName)
 
         val targetFile = rootFolder.findFile(targetFileName)
             ?: rootFolder.createFile("application/octet-stream", targetFileName)
 
         targetFile?.uri?.let { uri ->
             // 包装流以监听下载进度
-            val progressStream = ProgressInputStream(tempFile.inputStream()) { bytesRead ->
-                val totalSize = tempFile.length()
+            val progressStream = ProgressInputStream(sourceFile.inputStream()) { bytesRead ->
+                val totalSize = sourceFile.length()
                 // 计算 KB 和 MB
                 val kb = bytesRead / 1024.0
                 val mb = kb / 1024.0
@@ -554,7 +555,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                 }
             }
         }
-        tempFile.delete()
+        sourceFile.delete()
     }
 
     /**
