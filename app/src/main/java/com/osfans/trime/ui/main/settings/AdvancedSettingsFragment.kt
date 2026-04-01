@@ -513,7 +513,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         val percent = if (totalSize > 0) String.format("，%.1f%%", totalRead * 100.0 / totalSize) else ""
                         val title = "$originalTitle（下载中：$size$percent）"
 
-                        CoroutineScope(Dispatchers.Main).launch {
+                        withContext(Dispatchers.Main) {
                             pref.title = title
                         }
                     }
@@ -607,7 +607,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                 }
 
                 processed++
-                CoroutineScope(Dispatchers.Main).launch {
+                withContext(Dispatchers.Main) {
                     pref.title = "$originalTitle（解压中：$processed / $totalEntries）"
                 }
             }
@@ -662,7 +662,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                     }
                 }
                 processed++
-                CoroutineScope(Dispatchers.Main).launch {
+                withContext(Dispatchers.Main) {
                     pref.title = "$originalTitle（文件同步中：$processed / $total）"
                 }
             }
@@ -695,7 +695,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
 
                 // 更新解压进度
                 processed++
-                CoroutineScope(Dispatchers.Main).launch {
+                withContext(Dispatchers.Main) {
                     pref.title = "$originalTitle（解压中：$processed / $totalEntries）"
                 }
             }
