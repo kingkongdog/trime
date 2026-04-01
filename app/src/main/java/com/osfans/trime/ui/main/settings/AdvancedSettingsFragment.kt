@@ -610,9 +610,6 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         zipFile.delete()
     }
 
-    /**
-    * 递归同步本地文件夹到 SAF 目录
-    */
     private suspend fun syncToSAF(
         context: Context,
         folderName: String,
@@ -620,24 +617,48 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         originalTitle: String
     ) = withContext(Dispatchers.IO) {
         val localDir = File(context.cacheDir, folderName)
-        val files = localDir.listFiles() ?: return@withContext
+        val totalFiles = localDir.walk().count { it.isFile }
         val rootFolder = DocumentFile.fromTreeUri(context, rootUri!!) ?: throw Exception("无法解析 Rime 目录")
-        val totalFils = files.size
+        syncFolderToSAF(context, localDir, rootFolder, totalFiles, pref, originalTitle)
+    }
+    /**
+     * 递归同步本地文件夹到 SAF 目录
+     */
+    private suspend fun syncFolderToSAF(
+        context: Context,
+        localDir: File,
+        safDir: DocumentFile,
+        total: Int,
+        pref: Preference,
+        originalTitle: String
+    ): Unit = withContext(Dispatchers.IO) {
+        val files = localDir.listFiles() ?: return@withContext
         var processed = 0
 
         files.forEach { file ->
-            if (!file.isDirectory) {
-                val entryPath = file.path.substringAfter(folderName, "")
-                writeFileToSAF(context, rootFolder, entryPath, file.inputStream())
-            }
-            processed++
-            CoroutineScope(Dispatchers.Main).launch {
-                pref.title = "$originalTitle（同步文件中：$processed / $totalFils）"
+            if (file.isDirectory) {
+                // 如果是文件夹，递归创建并进入
+                val nextSafDir = safDir.findFile(file.name) ?: safDir.createDirectory(file.name)
+                if (nextSafDir != null) {
+                    syncFolderToSAF(context, file, nextSafDir, total, pref, originalTitle)
+                }
+            } else {
+                // 如果是文件，执行 SAF 写入
+                val targetFile = safDir.findFile(file.name) ?: safDir.createFile("application/octet-stream", file.name)
+                targetFile?.uri?.let { uri ->
+                    context.contentResolver.openOutputStream(uri, "wt")?.use { output ->
+                        file.inputStream().use { input ->
+                            // 🚩 使用 64KB 缓冲区减少系统调用次数
+                            input.copyTo(output, 64 * 1024)
+                        }
+                    }
+                }
+                processed++
+                CoroutineScope(Dispatchers.Main).launch {
+                    pref.title = "$originalTitle（文件同步中：$processed / $total）"
+                }
             }
         }
-
-        localDir.delete()
-        pref.title = "$originalTitle（同步文件完成）"
     }
 
     private suspend fun unzipToSAF(context: Context, zipFile: File, pref: Preference, originalTitle: String) = withContext(Dispatchers.IO) {
