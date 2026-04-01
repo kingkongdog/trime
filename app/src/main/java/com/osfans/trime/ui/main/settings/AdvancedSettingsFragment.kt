@@ -533,11 +533,11 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
 
         preferenceScreen.addPreference(authPref)
         preferenceScreen.addPreference(importPref)
-        preferenceScreen.addPreference(upgradeQThemePref)
+        // preferenceScreen.addPreference(upgradeQThemePref)
         preferenceScreen.addPreference(upgradeQThemePrefUnzipToSAF)
-        preferenceScreen.addPreference(upgradeWanXiangGramPref)
+        // preferenceScreen.addPreference(upgradeWanXiangGramPref)
         preferenceScreen.addPreference(upgradeWanXiangGramPrefDownloadToSAF)
-        preferenceScreen.addPreference(upgradeWanXiangSchemaPref)
+        // preferenceScreen.addPreference(upgradeWanXiangSchemaPref)
         preferenceScreen.addPreference(upgradeWanXiangSchemaPrefDownloadToSAF)
 
         // viewLifecycleOwner.lifecycleScope 闪退：Can't access the Fragment View's LifecycleOwner
