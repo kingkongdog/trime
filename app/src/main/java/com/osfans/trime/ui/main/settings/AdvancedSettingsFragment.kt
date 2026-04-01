@@ -366,11 +366,118 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             }
         }
 
+        // 按钮 D：升级 wanxiang 模型
+        val upgradeWanXiangGramPrefDownloadToSAF = Preference(context).apply {
+            key = "upgrade_wanxiang_gram"
+            title = originalGramTitle + "test"
+            summary = originalGramSummary
+            order = 1001
+            isIconSpaceReserved = false
+            setOnPreferenceClickListener {
+                if (rootUri == null) {
+                    Toast.makeText(context, "请先授权 rime 文件夹", Toast.LENGTH_LONG).show()
+                    return@setOnPreferenceClickListener true
+                }
+
+                // 禁止重复点击
+                isEnabled = false
+
+                // 使用主线程协程
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        val originalVersion = getGramFileDate(context)
+
+                        performUpgradeGram(context, this@apply)
+
+                        // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
+                        viewModel.rime.launchOnReady {
+                            // 切换到主线程更新“部署中”状态
+                            launch(Dispatchers.Main) {
+                                title = "$originalGramTitle（部署中。。。）"
+                            }
+
+                            it.deploy()
+
+                            // 部署完成后，再次切回主线程更新结果
+                            launch(Dispatchers.Main) {
+                                title = "$originalGramTitle（部署完成）"
+                                Toast.makeText(context, "wanxiang 模型升级完成！", Toast.LENGTH_SHORT).show()
+                                title = "$originalGramTitle（版本：${getGramFileDate(context)} from $originalVersion）"
+                                summary = originalGramSummary
+                            }
+                        }
+                    } catch (e: Exception) {
+                        title = "$originalGramTitle（升级失败）"
+                        summary = "错误: ${e.message}"
+                        e.printStackTrace()
+                    } finally {
+                        delay(3000)
+                        isEnabled = true
+                    }
+                }
+                true
+            }
+        }
+
+        // 按钮 E：升级 wanxiang 输入方案
+        val upgradeWanXiangSchemaPrefDownloadToSAF = Preference(context).apply {
+            key = "upgrade_wanxiang_schema"
+            title = originalSchemaTitle + "test"
+            summary = originalSchemaSummary
+            order = 1002
+            isIconSpaceReserved = false
+            setOnPreferenceClickListener {
+                if (rootUri == null) {
+                    Toast.makeText(context, "请先授权 rime 文件夹", Toast.LENGTH_LONG).show()
+                    return@setOnPreferenceClickListener true
+                }
+
+                // 禁止重复点击
+                isEnabled = false
+
+                // 使用主线程协程
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        val originalVersion = readVersion(context, "wanxiang_version")
+
+                        performUpgradeSchemaAndTheme(context, this@apply, originalSchemaTitle, "https://codeload.github.com/kingkongdog/rime_wanxiang/zip/refs/heads/wanxiang")
+
+                        // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
+                        viewModel.rime.launchOnReady {
+                            // 切换到主线程更新“部署中”状态
+                            launch(Dispatchers.Main) {
+                                title = "$originalSchemaTitle（部署中。。。）"
+                            }
+
+                            it.deploy()
+
+                            // 部署完成后，再次切回主线程更新结果
+                            launch(Dispatchers.Main) {
+                                title = "$originalSchemaTitle（部署完成）"
+                                Toast.makeText(context, "wanxiang 输入方案升级完成！", Toast.LENGTH_SHORT).show()
+                                title = "$originalSchemaTitle（版本：${readVersion(context, "wanxiang_version")} from $originalVersion）"
+                                summary = originalSchemaSummary
+                            }
+                        }
+                    } catch (e: Exception) {
+                        title = "$originalSchemaTitle（升级失败）"
+                        summary = "错误: ${e.message}"
+                        e.printStackTrace()
+                    } finally {
+                        delay(3000)
+                        isEnabled = true
+                    }
+                }
+                true
+            }
+        }
+
         preferenceScreen.addPreference(authPref)
         preferenceScreen.addPreference(importPref)
         preferenceScreen.addPreference(upgradeQThemePref)
+        preferenceScreen.addPreference(upgradeWanXiangGramPrefDownloadToSAF)
         preferenceScreen.addPreference(upgradeWanXiangGramPref)
-        preferenceScreen.addPreference(upgradeWanXiangSchemaPref)
+        preferenceScreen.addPreference(upgradeWanXiangSchemaPrefDownloadToSAF)
 
         // viewLifecycleOwner.lifecycleScope 闪退：Can't access the Fragment View's LifecycleOwner
         lifecycleScope.launch {
