@@ -472,9 +472,69 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             }
         }
 
+        // 按钮 C：升级 Q 主题
+        val upgradeQThemePrefUnzipToSAF = Preference(context).apply {
+            key = "upgrade_q_theme"
+            title = originalThemeTitle + "test"
+            summary = originalThemeSummary
+            order = 1000
+            isIconSpaceReserved = false
+            setOnPreferenceClickListener {
+                if (rootUri == null) {
+                    Toast.makeText(context, "请先授权 rime 文件夹", Toast.LENGTH_LONG).show()
+                    return@setOnPreferenceClickListener true
+                }
+
+                // 禁止重复点击
+                isEnabled = false
+
+                // 使用主线程协程
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        val originalVersion = readVersion(context, "q_version")
+
+                        // 1. 先下载
+                        downloadToTempFile(context,
+                            "https://codeload.github.com/kingkongdog/trime-q-theme/zip/refs/heads/main",
+                            "theme_temp.zip", this@apply, originalThemeTitle)
+
+                        // 2. 再解压
+                        unzipToSAF(context, "theme_temp.zip", this@apply, originalThemeTitle)
+
+                        // 4. 执行部署 (假设 Trime 有对应的 Service 接口)
+                        viewModel.rime.launchOnReady {
+                            // 切换到主线程更新“部署中”状态
+                            launch(Dispatchers.Main) {
+                                title = "$originalThemeTitle（部署中。。。）"
+                            }
+
+                            it.deploy()
+
+                            // 部署完成后，再次切回主线程更新结果
+                            launch(Dispatchers.Main) {
+                                title = "$originalThemeTitle（部署完成）"
+                                Toast.makeText(context, "Q 主题升级完成！", Toast.LENGTH_SHORT).show()
+                                title = "$originalThemeTitle（版本：${readVersion(context, "q_version")} from $originalVersion）"
+                                summary = originalThemeSummary
+                            }
+                        }
+                    } catch (e: Exception) {
+                        title = "$originalThemeTitle（升级失败）"
+                        summary = "错误: ${e.message}"
+                        e.printStackTrace()
+                    } finally {
+                        delay(3000)
+                        isEnabled = true
+                    }
+                }
+                true
+            }
+        }
+
         preferenceScreen.addPreference(authPref)
         preferenceScreen.addPreference(importPref)
         preferenceScreen.addPreference(upgradeQThemePref)
+        preferenceScreen.addPreference(upgradeQThemePrefUnzipToSAF)
         preferenceScreen.addPreference(upgradeWanXiangGramPref)
         preferenceScreen.addPreference(upgradeWanXiangGramPrefDownloadToSAF)
         preferenceScreen.addPreference(upgradeWanXiangSchemaPref)
@@ -777,8 +837,9 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         return@withContext processed
     }
 
-    private suspend fun unzipToSAF(context: Context, zipFile: File, pref: Preference, originalTitle: String) = withContext(Dispatchers.IO) {
+    private suspend fun unzipToSAF(context: Context, zipFileName: String, pref: Preference, originalTitle: String) = withContext(Dispatchers.IO) {
         val rootFolder = DocumentFile.fromTreeUri(context, rootUri!!) ?: throw Exception("无法解析 Rime 目录")
+        val zipFile = File(context.cacheDir, zipFileName)
 
         java.util.zip.ZipFile(zipFile).use { zip ->
             val entries = zip.entries()
