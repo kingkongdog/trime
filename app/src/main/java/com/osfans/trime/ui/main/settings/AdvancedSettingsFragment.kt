@@ -369,7 +369,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         // 按钮 D：升级 wanxiang 模型
         val upgradeWanXiangGramPrefDownloadToSAF = Preference(context).apply {
             key = "upgrade_wanxiang_gram_download_to_saf"
-            title = originalGramTitle + "test"
+            title = originalGramTitle
             summary = originalGramSummary
             order = 1001
             isIconSpaceReserved = false
@@ -422,7 +422,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         // 按钮 E：升级 wanxiang 输入方案
         val upgradeWanXiangSchemaPrefDownloadToSAF = Preference(context).apply {
             key = "upgrade_wanxiang_schema_download_to_saf"
-            title = originalSchemaTitle + "test"
+            title = originalSchemaTitle
             summary = originalSchemaSummary
             order = 1002
             isIconSpaceReserved = false
@@ -533,11 +533,11 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
 
         preferenceScreen.addPreference(authPref)
         preferenceScreen.addPreference(importPref)
-//        preferenceScreen.addPreference(upgradeQThemePref)
+        preferenceScreen.addPreference(upgradeQThemePref)
         preferenceScreen.addPreference(upgradeQThemePrefUnzipToSAF)
-//        preferenceScreen.addPreference(upgradeWanXiangGramPref)
+        preferenceScreen.addPreference(upgradeWanXiangGramPref)
         preferenceScreen.addPreference(upgradeWanXiangGramPrefDownloadToSAF)
-//        preferenceScreen.addPreference(upgradeWanXiangSchemaPref)
+        preferenceScreen.addPreference(upgradeWanXiangSchemaPref)
         preferenceScreen.addPreference(upgradeWanXiangSchemaPrefDownloadToSAF)
 
         // viewLifecycleOwner.lifecycleScope 闪退：Can't access the Fragment View's LifecycleOwner
