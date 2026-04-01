@@ -199,7 +199,9 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         val originalVersion = readVersion(context, "q_version")
 
                         // 1. 先下载
-                        val zip = downloadToTempFile(context, this@apply, originalThemeTitle, "https://codeload.github.com/kingkongdog/trime-q-theme/zip/refs/heads/main", "theme_temp.zip")
+                        val zip = downloadToTempFile(context,
+                            "https://codeload.github.com/kingkongdog/trime-q-theme/zip/refs/heads/main",
+                            "theme_temp.zip", this@apply, originalThemeTitle)
 
                         // 2. 再解压
 //                        unzipToSAF(context, localZip, this@apply, originalThemeTitle)
@@ -262,9 +264,11 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         val originalVersion = getGramFileDate(context)
 
                         // 1. 先下载
-                        val localZip = downloadToTempFile(context, this@apply, originalGramTitle, "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram", "gram_temp.zip")
+                        val localZip = downloadToTempFile(context,
+                            "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram", 
+                            "gram_temp.zip", this@apply, originalGramTitle)
 
-                        // 2. 再解压
+                        // 2. 移动到 rime 文件夹
                         moveToSAF(context, localZip, this@apply, originalGramTitle, "wanxiang-lts-zh-hans.gram")
 
                         // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
@@ -319,7 +323,9 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         val originalVersion = readVersion(context, "wanxiang_version")
 
                         // 1. 先下载
-                        val zip = downloadToTempFile(context, this@apply, originalSchemaTitle, "https://codeload.github.com/kingkongdog/rime_wanxiang/zip/refs/heads/wanxiang", "schema_temp.zip")
+                        val zip = downloadToTempFile(context,
+                            "https://codeload.github.com/kingkongdog/rime_wanxiang/zip/refs/heads/wanxiang", 
+                            "schema_temp.zip", this@apply, originalSchemaTitle,)
 
                         // 2. 再解压
 //                        unzipToSAF(context, localZip, this@apply, originalSchemaTitle)
@@ -475,7 +481,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
     }
 
     @SuppressLint("DefaultLocale")
-    private suspend fun downloadToTempFile(context: Context, pref: Preference, originalTitle: String, url: String, tempFileName: String ): File = withContext(Dispatchers.IO) {
+    private suspend fun downloadToTempFile(context: Context, url: String, tempFileName: String, pref: Preference, originalTitle: String ): File = withContext(Dispatchers.IO) {
         val client = OkHttpClient()
         val request = Request.Builder().url(url).build()
         val tempFile = File(context.cacheDir, tempFileName)
@@ -620,6 +626,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         val totalFiles = localDir.walk().count { it.isFile }
         val rootFolder = DocumentFile.fromTreeUri(context, rootUri!!) ?: throw Exception("无法解析 Rime 目录")
         syncFolderToSAF(context, localDir, rootFolder, totalFiles, pref, originalTitle)
+        localDir.deleteRecursively()
     }
     /**
      * 递归同步本地文件夹到 SAF 目录
