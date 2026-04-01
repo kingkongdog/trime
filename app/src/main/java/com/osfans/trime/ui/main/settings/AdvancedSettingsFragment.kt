@@ -442,7 +442,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                 // 始终显示已下载大小，超过 1MB 显示 MB，不足 1MB 显示 KB，保留两位小数
                 val size = if (mb >= 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
                 // 如果能获取总大小，显示百分比
-                val percent = if (totalSize > 0) String.format("，%.1f%", bytesRead * 100 / totalSize) else ""
+                val percent = if (totalSize > 0) String.format("，%.1f%", bytesRead * 100.0 / totalSize) else ""
                 val title = "$originalGramTitle（下载中：$size$percent）"
 
                 CoroutineScope(Dispatchers.Main).launch {
@@ -492,11 +492,10 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         // 始终显示已下载大小，超过 1MB 显示 MB，不足 1MB 显示 KB，保留两位小数
                         val size = if (mb >= 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
                         // 如果能获取总大小，显示百分比
-                        val percent = if (totalSize > 0) String.format("，%.1f%", totalRead * 100 / totalSize) else ""
+                        val percent = if (totalSize > 0) String.format("，%.1f%", totalRead * 100.0 / totalSize) else ""
                         val title = "$originalTitle（下载中：$size$percent）"
 
-//                      CoroutineScope(Dispatchers.Main).launch {
-                        withContext(Dispatchers.Main) {
+                        CoroutineScope(Dispatchers.Main).launch {
                             pref.title = title
                         }
                     }
@@ -523,11 +522,10 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                 // 始终显示已下载大小，超过 1MB 显示 MB，不足 1MB 显示 KB，保留两位小数
                 val size = if (mb >= 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
                 // 如果能获取总大小，显示百分比
-                val percent = if (totalSize > 0) String.format("，%.1f%", bytesRead * 100 / totalSize) else ""
+                val percent = if (totalSize > 0) String.format("，%.1f%", bytesRead * 100.0 / totalSize) else ""
                 val title = "$originalTitle（移动中：$size$percent）"
 
                 CoroutineScope(Dispatchers.Main).launch {
-//              withContext(Dispatchers.Main) {
                     pref.title = title
                 }
             }
@@ -597,7 +595,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                 // 始终显示已下载大小，超过 1MB 显示 MB，不足 1MB 显示 KB，保留两位小数
                 val size = if (mb >= 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
                 // 如果能获取总大小，显示百分比
-                val percent = if (totalSize > 0) String.format("，%.1f%", bytesRead * 100 / totalSize) else ""
+                val percent = if (totalSize > 0) String.format("，%.1f%", bytesRead * 100.0 / totalSize) else ""
                 val title = "$originalTitle（下载中：$size$percent）"
 
                 CoroutineScope(Dispatchers.Main).launch {
