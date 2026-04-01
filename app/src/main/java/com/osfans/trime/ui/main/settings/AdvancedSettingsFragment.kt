@@ -543,20 +543,20 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         // viewLifecycleOwner.lifecycleScope 闪退：Can't access the Fragment View's LifecycleOwner
         lifecycleScope.launch {
             if (rootUri != null) {
-                upgradeQThemePref.title = "$originalThemeTitle（版本：${readVersion(context, "q_version")}）"
+                upgradeQThemePrefUnzipToSAF.title = "$originalThemeTitle（版本：${readVersion(context, "q_version")}）"
             }
         }
 
         lifecycleScope.launch {
             if (rootUri != null) {
-                upgradeWanXiangGramPref.title = "$originalGramTitle（版本：${getGramFileDate(context)}）"
+                upgradeWanXiangGramPrefDownloadToSAF.title = "$originalGramTitle（版本：${getGramFileDate(context)}）"
             }
         }
 
         // viewLifecycleOwner.lifecycleScope 闪退：Can't access the Fragment View's LifecycleOwner
         lifecycleScope.launch {
             if (rootUri != null) {
-                upgradeWanXiangSchemaPref.title = "$originalSchemaTitle（版本：${readVersion(context, "wanxiang_version")}）"
+                upgradeWanXiangSchemaPrefDownloadToSAF.title = "$originalSchemaTitle（版本：${readVersion(context, "wanxiang_version")}）"
             }
         }
     }
