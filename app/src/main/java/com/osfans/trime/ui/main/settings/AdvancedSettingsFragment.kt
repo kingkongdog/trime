@@ -199,12 +199,18 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         val originalVersion = readVersion(context, "q_version")
 
                         // 1. 先下载
-                        val localZip = downloadToTempFile(context, this@apply, originalThemeTitle, "https://codeload.github.com/kingkongdog/trime-q-theme/zip/refs/heads/main", "theme_temp.zip")
+                        val zip = downloadToTempFile(context, this@apply, originalThemeTitle, "https://codeload.github.com/kingkongdog/trime-q-theme/zip/refs/heads/main", "theme_temp.zip")
 
                         // 2. 再解压
-                        unzipToSAF(context, localZip, this@apply, originalThemeTitle)
+//                        unzipToSAF(context, localZip, this@apply, originalThemeTitle)
 
-                        // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
+                        // 2. 解压 zip 文件到 cacheDir
+                        unzipToCacheDir(context, zip, "theme_temp", this@apply, originalThemeTitle)
+
+                        // 3. 同步文件到 SAF
+                        syncToSAF(context, "theme_temp", this@apply, originalThemeTitle)
+
+                        // 4. 执行部署 (假设 Trime 有对应的 Service 接口)
                         viewModel.rime.launchOnReady {
                             // 切换到主线程更新“部署中”状态
                             launch(Dispatchers.Main) {
@@ -313,10 +319,16 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         val originalVersion = readVersion(context, "wanxiang_version")
 
                         // 1. 先下载
-                        val localZip = downloadToTempFile(context, this@apply, originalSchemaTitle, "https://codeload.github.com/kingkongdog/rime_wanxiang/zip/refs/heads/wanxiang", "schema_temp.zip")
+                        val zip = downloadToTempFile(context, this@apply, originalSchemaTitle, "https://codeload.github.com/kingkongdog/rime_wanxiang/zip/refs/heads/wanxiang", "schema_temp.zip")
 
                         // 2. 再解压
-                        unzipToSAF(context, localZip, this@apply, originalSchemaTitle)
+//                        unzipToSAF(context, localZip, this@apply, originalSchemaTitle)
+
+                        // 2. 解压 zip 文件到 cacheDir
+                        unzipToCacheDir(context, zip, "schema_temp", this@apply, originalSchemaTitle)
+
+                        // 3. 同步文件到 SAF
+                        syncToSAF(context, "schema_temp", this@apply, originalSchemaTitle)
 
                         // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
                         viewModel.rime.launchOnReady {
@@ -539,6 +551,95 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         tempFile.delete()
     }
 
+    /**
+    * 将本地 ZIP 文件解压到 App 私有缓存目录
+    * @param context 上下文
+    * @param zipFile 下载好的临时 ZIP 文件
+    * @param folderName 解压后的目标文件夹名 (如 "wanxiang_temp")
+    * @return 解压后的根目录 File 对象
+    */
+    private suspend fun unzipToCacheDir(
+        context: Context,
+        zipFile: File,
+        folderName: String,
+        pref: Preference,
+        originalTitle: String
+    ) = withContext(Dispatchers.IO) {
+        val outputDir = File(context.cacheDir, folderName)
+        if (outputDir.exists()) {
+            outputDir.deleteRecursively() // 清理旧的残留数据
+        }
+        outputDir.mkdirs()
+
+        java.util.zip.ZipFile(zipFile).use { zip ->
+            val entries = zip.entries()
+            val totalEntries = zip.size()
+            var processed = 0
+
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+
+                // 2. 过滤掉 GitHub 压缩包自带的顶层随机目录名（如 rime-wanxiang-main/）
+                // 或者是处理空文件夹
+                val entryPath = entry.name.substringAfter("/", "")
+                if (entryPath.isNotEmpty() && !entryPath.startsWith(".")) {
+                    val outFile = File(outputDir, entryPath)
+
+                    if (entry.isDirectory) {
+                        outFile.mkdirs()
+                    } else {
+                        // 确保父目录存在（处理深层路径）
+                        outFile.parentFile?.mkdirs()
+
+                        // 3. 执行解压：从本地文件流拷贝到本地文件流，速度极快
+                        zip.getInputStream(entry).use { input ->
+                            outFile.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    }
+                }
+
+                processed++
+                CoroutineScope(Dispatchers.Main).launch {
+                    pref.title = "$originalTitle（解压中：$processed / $totalEntries）"
+                }
+            }
+        }
+
+        zipFile.delete()
+    }
+
+    /**
+    * 递归同步本地文件夹到 SAF 目录
+    */
+    private suspend fun syncToSAF(
+        context: Context,
+        folderName: String,
+        pref: Preference,
+        originalTitle: String
+    ) = withContext(Dispatchers.IO) {
+        val localDir = File(context.cacheDir, folderName)
+        val files = localDir.listFiles() ?: return@withContext
+        val rootFolder = DocumentFile.fromTreeUri(context, rootUri!!) ?: throw Exception("无法解析 Rime 目录")
+        val totalFils = files.size
+        var processed = 0
+
+        files.forEach { file ->
+            if (!file.isDirectory) {
+                val entryPath = file.path.substringAfter(folderName, "")
+                writeFileToSAF(context, rootFolder, entryPath, file.inputStream())
+            }
+            processed++
+            CoroutineScope(Dispatchers.Main).launch {
+                pref.title = "$originalTitle（同步文件中：$processed / $totalFils）"
+            }
+        }
+
+        localDir.delete()
+        pref.title = "$originalTitle（同步文件完成）"
+    }
+
     private suspend fun unzipToSAF(context: Context, zipFile: File, pref: Preference, originalTitle: String) = withContext(Dispatchers.IO) {
         val rootFolder = DocumentFile.fromTreeUri(context, rootUri!!) ?: throw Exception("无法解析 Rime 目录")
 
@@ -563,10 +664,8 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
 
                 // 更新解压进度
                 processed++
-                if (processed % 10 == 0 || processed == totalEntries) {
-                    withContext(Dispatchers.Main) {
-                        pref.title = "$originalTitle（解压中：$processed / $totalEntries）"
-                    }
+                CoroutineScope(Dispatchers.Main).launch {
+                    pref.title = "$originalTitle（解压中：$processed / $totalEntries）"
                 }
             }
         }
