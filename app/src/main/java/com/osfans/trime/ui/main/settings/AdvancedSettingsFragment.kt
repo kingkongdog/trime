@@ -264,12 +264,12 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         val originalVersion = getGramFileDate(context)
 
                         // 1. 先下载
-                        val localZip = downloadToTempFile(context,
-                            "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram", 
-                            "gram_temp.zip", this@apply, originalGramTitle)
+                        val gram = downloadToTempFile(context,
+                            "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram",
+                            "gram_temp.gram", this@apply, originalGramTitle)
 
                         // 2. 移动到 rime 文件夹
-                        moveToSAF(context, localZip, this@apply, originalGramTitle, "wanxiang-lts-zh-hans.gram")
+                        moveToSAF(context, gram, this@apply, originalGramTitle, "wanxiang-lts-zh-hans.gram")
 
                         // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
                         viewModel.rime.launchOnReady {
@@ -625,7 +625,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         val localDir = File(context.cacheDir, folderName)
         val totalFiles = localDir.walk().count { it.isFile }
         val rootFolder = DocumentFile.fromTreeUri(context, rootUri!!) ?: throw Exception("无法解析 Rime 目录")
-        syncFolderToSAF(context, localDir, rootFolder, totalFiles, pref, originalTitle)
+        syncFolderToSAF(context, localDir, rootFolder, totalFiles, 0, pref, originalTitle)
         localDir.deleteRecursively()
     }
     /**
@@ -636,18 +636,19 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         localDir: File,
         safDir: DocumentFile,
         total: Int,
+        processed: Int,
         pref: Preference,
         originalTitle: String
-    ): Unit = withContext(Dispatchers.IO) {
-        val files = localDir.listFiles() ?: return@withContext
-        var processed = 0
+    ): Int = withContext(Dispatchers.IO) {
+        val files = localDir.listFiles() ?: return@withContext 0
+        var processed = processed
 
         files.forEach { file ->
             if (file.isDirectory) {
                 // 如果是文件夹，递归创建并进入
                 val nextSafDir = safDir.findFile(file.name) ?: safDir.createDirectory(file.name)
                 if (nextSafDir != null) {
-                    syncFolderToSAF(context, file, nextSafDir, total, pref, originalTitle)
+                    processed = syncFolderToSAF(context, file, nextSafDir, total, processed, pref, originalTitle)
                 }
             } else {
                 // 如果是文件，执行 SAF 写入
@@ -666,6 +667,8 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                 }
             }
         }
+
+        return@withContext processed
     }
 
     private suspend fun unzipToSAF(context: Context, zipFile: File, pref: Preference, originalTitle: String) = withContext(Dispatchers.IO) {
