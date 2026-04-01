@@ -199,7 +199,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         val originalVersion = readVersion(context, "q_version")
 
                         // 1. 先下载
-                        val localZip = downloadToTempFile(context, this@apply, originalThemeTitle, "https://codeload.github.com/kingkongdog/trime-q-theme/zip/refs/heads/main")
+                        val localZip = downloadToTempFile(context, this@apply, originalThemeTitle, "https://codeload.github.com/kingkongdog/trime-q-theme/zip/refs/heads/main", "theme_temp.zip")
 
                         // 2. 再解压
                         unzipToSAF(context, localZip, this@apply, originalThemeTitle)
@@ -256,7 +256,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         val originalVersion = getGramFileDate(context)
 
                         // 1. 先下载
-                        val localZip = downloadToTempFile(context, this@apply, originalGramTitle, "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram")
+                        val localZip = downloadToTempFile(context, this@apply, originalGramTitle, "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram", "gram_temp.zip")
 
                         // 2. 再解压
                         moveToSAF(context, localZip, this@apply, originalGramTitle, "wanxiang-lts-zh-hans.gram")
@@ -313,7 +313,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         val originalVersion = readVersion(context, "wanxiang_version")
 
                         // 1. 先下载
-                        val localZip = downloadToTempFile(context, this@apply, originalSchemaTitle, "https://codeload.github.com/kingkongdog/rime_wanxiang/zip/refs/heads/wanxiang")
+                        val localZip = downloadToTempFile(context, this@apply, originalSchemaTitle, "https://codeload.github.com/kingkongdog/rime_wanxiang/zip/refs/heads/wanxiang", "schema_temp.zip")
 
                         // 2. 再解压
                         unzipToSAF(context, localZip, this@apply, originalSchemaTitle)
@@ -442,7 +442,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                 // 始终显示已下载大小，超过 1MB 显示 MB，不足 1MB 显示 KB，保留两位小数
                 val size = if (mb >= 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
                 // 如果能获取总大小，显示百分比
-                val percent = if (totalSize > 0) String.format("，%.1f%", bytesRead * 100.0 / totalSize) else ""
+                val percent = if (totalSize > 0) String.format("，%.1f%%", bytesRead * 100.0 / totalSize) else ""
                 val title = "$originalGramTitle（下载中：$size$percent）"
 
                 CoroutineScope(Dispatchers.Main).launch {
@@ -463,10 +463,10 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
     }
 
     @SuppressLint("DefaultLocale")
-    private suspend fun downloadToTempFile(context: Context, pref: Preference, originalTitle: String, url: String ): File = withContext(Dispatchers.IO) {
+    private suspend fun downloadToTempFile(context: Context, pref: Preference, originalTitle: String, url: String, tempFileName: String ): File = withContext(Dispatchers.IO) {
         val client = OkHttpClient()
         val request = Request.Builder().url(url).build()
-        val tempFile = File(context.cacheDir, "temp_update.zip")
+        val tempFile = File(context.cacheDir, tempFileName)
 
         // 如果之前有残留，先删掉
         if (tempFile.exists()) tempFile.delete()
@@ -492,7 +492,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         // 始终显示已下载大小，超过 1MB 显示 MB，不足 1MB 显示 KB，保留两位小数
                         val size = if (mb >= 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
                         // 如果能获取总大小，显示百分比
-                        val percent = if (totalSize > 0) String.format("，%.1f%", totalRead * 100.0 / totalSize) else ""
+                        val percent = if (totalSize > 0) String.format("，%.1f%%", totalRead * 100.0 / totalSize) else ""
                         val title = "$originalTitle（下载中：$size$percent）"
 
                         CoroutineScope(Dispatchers.Main).launch {
@@ -522,7 +522,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                 // 始终显示已下载大小，超过 1MB 显示 MB，不足 1MB 显示 KB，保留两位小数
                 val size = if (mb >= 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
                 // 如果能获取总大小，显示百分比
-                val percent = if (totalSize > 0) String.format("，%.1f%", bytesRead * 100.0 / totalSize) else ""
+                val percent = if (totalSize > 0) String.format("，%.1f%%", bytesRead * 100.0 / totalSize) else ""
                 val title = "$originalTitle（移动中：$size$percent）"
 
                 CoroutineScope(Dispatchers.Main).launch {
@@ -595,7 +595,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                 // 始终显示已下载大小，超过 1MB 显示 MB，不足 1MB 显示 KB，保留两位小数
                 val size = if (mb >= 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
                 // 如果能获取总大小，显示百分比
-                val percent = if (totalSize > 0) String.format("，%.1f%", bytesRead * 100.0 / totalSize) else ""
+                val percent = if (totalSize > 0) String.format("，%.1f%%", bytesRead * 100.0 / totalSize) else ""
                 val title = "$originalTitle（下载中：$size$percent）"
 
                 CoroutineScope(Dispatchers.Main).launch {
