@@ -72,6 +72,8 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
     private val originalThemeTitle = "升级 Q 主题"
     private val originalThemeSummary = "下载最新的 Q 主题到 rime 文件夹，并部署"
 
+    private val dirCache = mutableMapOf<String, DocumentFile>()
+
     // java.lang.IllegalStateException: Fragment AdvancedSettingsFragment{7b76595} (05a0eac8-8cbc-45fb-a130-5f4a9ac5b3fa) not attached to a context.
     // private var rootUri = requireContext().contentResolver.persistedUriPermissions.firstOrNull()?.uri
     // 只有在第一次被使用时才会执行，此时 context 肯定已经存在了
@@ -480,13 +482,11 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             var entry = zipInputStream.nextEntry
 
             while (entry != null) {
-                // 剥离 GitHub ZIP 默认的第一层目录 rime_wanxiang-wanxiang/
-                val entryPath = entry.name.substringAfter("/", "")
+                if(!entry.isDirectory) {
+                    // 剥离 GitHub ZIP 默认的第一层目录 rime_wanxiang-wanxiang/
+                    val entryPath = entry.name.substringAfter("/", "")
 
-                if (entryPath.isNotEmpty()) {
-                    if (entry.isDirectory) {
-                        createDirRecursive(rootFolder, entryPath)
-                    } else {
+                    if (entryPath.isNotEmpty() && !entryPath.startsWith(".")) {
                         writeFileToSAF(context, rootFolder, entryPath, zipInputStream)
                     }
                 }
@@ -497,11 +497,41 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
     }
 
     // 递归创建 SAF 目录
+//    private fun createDirRecursive(root: DocumentFile, path: String): DocumentFile? {
+//        var current = root
+//        path.split("/").filter { it.isNotEmpty() }.forEach { segment ->
+//            current = current.findFile(segment) ?: current.createDirectory(segment) ?: return null
+//        }
+//        return current
+//    }
+    // createDirWithCache
     private fun createDirRecursive(root: DocumentFile, path: String): DocumentFile? {
+        if (path.isEmpty()) return root
+
+        // 1. 如果整个路径已经在缓存中，直接返回
+        dirCache[path]?.let { return it }
+
+        // 2. 否则，逐级检查并构建缓存
         var current = root
-        path.split("/").filter { it.isNotEmpty() }.forEach { segment ->
-            current = current.findFile(segment) ?: current.createDirectory(segment) ?: return null
+        val segments = path.split("/").filter { it.isNotEmpty() }
+        val currentPath = StringBuilder()
+
+        for (i in segments.indices) {
+            val segment = segments[i]
+            if (currentPath.isNotEmpty()) currentPath.append("/")
+            currentPath.append(segment)
+
+            val fullSegmentPath = currentPath.toString()
+
+            // 逐级检查缓存，避免每一级都去 findFile
+            current = dirCache[fullSegmentPath] ?: (
+                    current.findFile(segment) ?: current.createDirectory(segment)
+                    ) ?: return null
+
+            // 将这一级存入缓存
+            dirCache[fullSegmentPath] = current
         }
+
         return current
     }
 
