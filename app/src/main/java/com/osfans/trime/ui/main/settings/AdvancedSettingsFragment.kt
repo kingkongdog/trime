@@ -26,6 +26,7 @@ import java.io.InputStream
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -197,7 +198,11 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                     try {
                         val originalVersion = readVersion(context, "q_version")
 
-                        performUpgradeSchemaAndTheme(context, this@apply, originalThemeTitle, "https://codeload.github.com/kingkongdog/trime-q-theme/zip/refs/heads/main")
+                        // 1. 先下载
+                        val localZip = downloadToTempFile(context, this@apply, originalThemeTitle, "https://codeload.github.com/kingkongdog/trime-q-theme/zip/refs/heads/main")
+
+                        // 2. 再解压
+                        unzipToSAF(context, localZip, this@apply, originalThemeTitle)
 
                         // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
                         viewModel.rime.launchOnReady {
@@ -250,7 +255,11 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                     try {
                         val originalVersion = getGramFileDate(context)
 
-                        performUpgradeGram(context, this@apply)
+                        // 1. 先下载
+                        val localZip = downloadToTempFile(context, this@apply, originalGramTitle, "https://github.com/amzxyz/RIME-LMDG/releases/download/LTS/wanxiang-lts-zh-hans.gram")
+
+                        // 2. 再解压
+                        moveToSAF(context, localZip, this@apply, originalGramTitle, "wanxiang-lts-zh-hans.gram")
 
                         // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
                         viewModel.rime.launchOnReady {
@@ -303,7 +312,11 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                     try {
                         val originalVersion = readVersion(context, "wanxiang_version")
 
-                        performUpgradeSchemaAndTheme(context, this@apply, originalSchemaTitle, "https://codeload.github.com/kingkongdog/rime_wanxiang/zip/refs/heads/wanxiang")
+                        // 1. 先下载
+                        val localZip = downloadToTempFile(context, this@apply, originalSchemaTitle, "https://codeload.github.com/kingkongdog/rime_wanxiang/zip/refs/heads/wanxiang")
+
+                        // 2. 再解压
+                        unzipToSAF(context, localZip, this@apply, originalSchemaTitle)
 
                         // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
                         viewModel.rime.launchOnReady {
@@ -450,6 +463,120 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
     }
 
     @SuppressLint("DefaultLocale")
+    private suspend fun downloadToTempFile(context: Context, pref: Preference, originalTitle: String, url: String ): File = withContext(Dispatchers.IO) {
+        val client = OkHttpClient()
+        val request = Request.Builder().url(url).build()
+        val tempFile = File(context.cacheDir, "temp_update.zip")
+
+        // 如果之前有残留，先删掉
+        if (tempFile.exists()) tempFile.delete()
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw Exception("网络请求失败: ${response.code}")
+            val body = response.body ?: throw Exception("下载内容为空")
+            val totalSize = body.contentLength()
+
+            body.byteStream().use { input ->
+                tempFile.outputStream().use { output ->
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    var totalRead = 0L
+
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        output.write(buffer, 0, bytesRead)
+                        totalRead += bytesRead
+
+                        // 计算 KB 和 MB
+                        val kb = totalRead / 1024.0
+                        val mb = kb / 1024.0
+                        // 始终显示已下载大小，超过 1MB 显示 MB，不足 1MB 显示 KB，保留两位小数
+                        val size = if (mb >= 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
+                        // 如果能获取总大小，显示百分比
+                        val percent = if (totalSize > 0) String.format("，%.1f%", totalRead * 100 / totalSize) else ""
+                        val title = "$originalTitle（下载中：$size$percent）"
+
+//                      CoroutineScope(Dispatchers.Main).launch {
+                        withContext(Dispatchers.Main) {
+                            pref.title = title
+                        }
+                    }
+                }
+            }
+        }
+        return@withContext tempFile
+    }
+
+    @SuppressLint("DefaultLocale")
+    private suspend fun moveToSAF(context: Context, tempFile: File, pref: Preference, originalTitle: String, targetFileName: String) = withContext(Dispatchers.IO) {
+        val rootFolder = DocumentFile.fromTreeUri(context, rootUri!!) ?: throw Exception("无法解析 Rime 目录")
+
+        val targetFile = rootFolder.findFile(targetFileName)
+            ?: rootFolder.createFile("application/octet-stream", targetFileName)
+
+        targetFile?.uri?.let { uri ->
+            // 包装流以监听下载进度
+            val progressStream = ProgressInputStream(tempFile.inputStream()) { bytesRead ->
+                val totalSize = tempFile.length()
+                // 计算 KB 和 MB
+                val kb = bytesRead / 1024.0
+                val mb = kb / 1024.0
+                // 始终显示已下载大小，超过 1MB 显示 MB，不足 1MB 显示 KB，保留两位小数
+                val size = if (mb >= 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
+                // 如果能获取总大小，显示百分比
+                val percent = if (totalSize > 0) String.format("，%.1f%", bytesRead * 100 / totalSize) else ""
+                val title = "$originalTitle（移动中：$size$percent）"
+
+                CoroutineScope(Dispatchers.Main).launch {
+//              withContext(Dispatchers.Main) {
+                    pref.title = title
+                }
+            }
+
+            progressStream.use { input ->
+                context.contentResolver.openOutputStream(uri, "wt")?.use { output ->
+                    input.copyTo(output) // 这一步是纯本地拷贝，非常快
+                }
+            }
+        }
+        tempFile.delete()
+    }
+
+    private suspend fun unzipToSAF(context: Context, zipFile: File, pref: Preference, originalTitle: String) = withContext(Dispatchers.IO) {
+        val rootFolder = DocumentFile.fromTreeUri(context, rootUri!!) ?: throw Exception("无法解析 Rime 目录")
+
+        java.util.zip.ZipFile(zipFile).use { zip ->
+            val entries = zip.entries()
+            val totalEntries = zip.size()
+            var processed = 0
+
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+
+                if(!entry.isDirectory) {
+                    // 剥离 GitHub ZIP 默认的第一层目录 rime_wanxiang-wanxiang/
+                    val entryPath = entry.name.substringAfter("/", "")
+
+                    if (entryPath.isNotEmpty() && !entryPath.startsWith(".")) {
+                        zip.getInputStream(entry).use { input ->
+                            writeFileToSAF(context, rootFolder, entryPath, input)
+                        }
+                    }
+                }
+
+                // 更新解压进度
+                processed++
+                if (processed % 10 == 0 || processed == totalEntries) {
+                    withContext(Dispatchers.Main) {
+                        pref.title = "$originalTitle（解压中：$processed / $totalEntries）"
+                    }
+                }
+            }
+        }
+        // 处理完后删除临时文件
+        zipFile.delete()
+    }
+
+    @SuppressLint("DefaultLocale")
     private suspend fun performUpgradeSchemaAndTheme(context: Context, pref: Preference, originalTitle: String, url: String) = withContext(Dispatchers.IO) {
         val client = OkHttpClient()
         val rootFolder = DocumentFile.fromTreeUri(context, rootUri!!) ?: throw Exception("无法解析 Rime 目录")
@@ -536,7 +663,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
     }
 
     // 将解压流写入 SAF 文件
-    private fun writeFileToSAF(context: Context, root: DocumentFile, filePath: String, zipStream: ZipInputStream) {
+    private fun writeFileToSAF(context: Context, root: DocumentFile, filePath: String, input: InputStream) {
         val segments = filePath.split("/")
         val fileName = segments.last()
         val dirPath = segments.dropLast(1).joinToString("/")
@@ -548,7 +675,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             val file = dir.findFile(fileName) ?: dir.createFile("application/octet-stream", fileName)
             file?.uri?.let { uri ->
                 context.contentResolver.openOutputStream(uri, "wt")?.use { output ->
-                    zipStream.copyTo(output)
+                    input.copyTo(output)
                 }
             }
         }
