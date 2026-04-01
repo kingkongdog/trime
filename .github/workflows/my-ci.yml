@@ -5,6 +5,9 @@
 name: My
 
 on:
+  push:
+    branches:
+      - develop
   workflow_dispatch:
 
 env:
