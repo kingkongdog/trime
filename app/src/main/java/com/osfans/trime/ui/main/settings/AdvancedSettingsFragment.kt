@@ -242,12 +242,71 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             }
         }
 
+        // 按钮 C：升级 Q 主题
+        val upgradeQThemePrefUnzipToSAF = Preference(context).apply {
+            key = "upgrade_q_theme_unzip_to_saf"
+            title = originalThemeTitle
+            summary = originalThemeSummary
+            order = 1001
+            isIconSpaceReserved = false
+            setOnPreferenceClickListener {
+                if (rootUri == null) {
+                    Toast.makeText(context, "请先授权 rime 文件夹", Toast.LENGTH_LONG).show()
+                    return@setOnPreferenceClickListener true
+                }
+
+                // 禁止重复点击
+                isEnabled = false
+
+                // 使用主线程协程
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        val originalVersion = readVersion(context, "q_version")
+
+                        // 1. 先下载
+                        downloadToTempFile(context,
+                            "https://codeload.github.com/kingkongdog/trime-q-theme/zip/refs/heads/main",
+                            "theme_temp.zip", this@apply, originalThemeTitle)
+
+                        // 2. 再解压
+                        unzipToSAF(context, "theme_temp.zip", this@apply, originalThemeTitle)
+
+                        // 4. 执行部署 (假设 Trime 有对应的 Service 接口)
+                        viewModel.rime.launchOnReady {
+                            // 切换到主线程更新“部署中”状态
+                            launch(Dispatchers.Main) {
+                                title = "$originalThemeTitle（部署中。。。）"
+                            }
+
+                            it.deploy()
+
+                            // 部署完成后，再次切回主线程更新结果
+                            launch(Dispatchers.Main) {
+                                title = "$originalThemeTitle（部署完成）"
+                                Toast.makeText(context, "Q 主题升级完成！", Toast.LENGTH_SHORT).show()
+                                title = "$originalThemeTitle（版本：${readVersion(context, "q_version")} from $originalVersion）"
+                                summary = originalThemeSummary
+                            }
+                        }
+                    } catch (e: Exception) {
+                        title = "$originalThemeTitle（升级失败）"
+                        summary = "错误: ${e.message}"
+                        e.printStackTrace()
+                    } finally {
+                        delay(3000)
+                        isEnabled = true
+                    }
+                }
+                true
+            }
+        }
+
         // 按钮 D：升级 wanxiang 模型
         val upgradeWanXiangGramPref = Preference(context).apply {
             key = "upgrade_wanxiang_gram"
             title = originalGramTitle
             summary = originalGramSummary
-            order = 1001
+            order = 1002
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
                 if (rootUri == null) {
@@ -301,12 +360,65 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             }
         }
 
+        // 按钮 D：升级 wanxiang 模型
+        val upgradeWanXiangGramPrefDownloadToSAF = Preference(context).apply {
+            key = "upgrade_wanxiang_gram_download_to_saf"
+            title = originalGramTitle
+            summary = originalGramSummary
+            order = 1003
+            isIconSpaceReserved = false
+            setOnPreferenceClickListener {
+                if (rootUri == null) {
+                    Toast.makeText(context, "请先授权 rime 文件夹", Toast.LENGTH_LONG).show()
+                    return@setOnPreferenceClickListener true
+                }
+
+                // 禁止重复点击
+                isEnabled = false
+
+                // 使用主线程协程
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        val originalVersion = getGramFileDate(context)
+
+                        performUpgradeGram(context, this@apply)
+
+                        // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
+                        viewModel.rime.launchOnReady {
+                            // 切换到主线程更新“部署中”状态
+                            launch(Dispatchers.Main) {
+                                title = "$originalGramTitle（部署中。。。）"
+                            }
+
+                            it.deploy()
+
+                            // 部署完成后，再次切回主线程更新结果
+                            launch(Dispatchers.Main) {
+                                title = "$originalGramTitle（部署完成）"
+                                Toast.makeText(context, "wanxiang 模型升级完成！", Toast.LENGTH_SHORT).show()
+                                title = "$originalGramTitle（版本：${getGramFileDate(context)} from $originalVersion）"
+                                summary = originalGramSummary
+                            }
+                        }
+                    } catch (e: Exception) {
+                        title = "$originalGramTitle（升级失败）"
+                        summary = "错误: ${e.message}"
+                        e.printStackTrace()
+                    } finally {
+                        delay(3000)
+                        isEnabled = true
+                    }
+                }
+                true
+            }
+        }
+
         // 按钮 E：升级 wanxiang 输入方案
         val upgradeWanXiangSchemaPref = Preference(context).apply {
             key = "upgrade_wanxiang_schema"
             title = originalSchemaTitle
             summary = originalSchemaSummary
-            order = 1002
+            order = 1004
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
                 if (rootUri == null) {
@@ -366,65 +478,12 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             }
         }
 
-        // 按钮 D：升级 wanxiang 模型
-        val upgradeWanXiangGramPrefDownloadToSAF = Preference(context).apply {
-            key = "upgrade_wanxiang_gram_download_to_saf"
-            title = originalGramTitle
-            summary = originalGramSummary
-            order = 1001
-            isIconSpaceReserved = false
-            setOnPreferenceClickListener {
-                if (rootUri == null) {
-                    Toast.makeText(context, "请先授权 rime 文件夹", Toast.LENGTH_LONG).show()
-                    return@setOnPreferenceClickListener true
-                }
-
-                // 禁止重复点击
-                isEnabled = false
-
-                // 使用主线程协程
-                viewLifecycleOwner.lifecycleScope.launch {
-                    try {
-                        val originalVersion = getGramFileDate(context)
-
-                        performUpgradeGram(context, this@apply)
-
-                        // 3. 执行部署 (假设 Trime 有对应的 Service 接口)
-                        viewModel.rime.launchOnReady {
-                            // 切换到主线程更新“部署中”状态
-                            launch(Dispatchers.Main) {
-                                title = "$originalGramTitle（部署中。。。）"
-                            }
-
-                            it.deploy()
-
-                            // 部署完成后，再次切回主线程更新结果
-                            launch(Dispatchers.Main) {
-                                title = "$originalGramTitle（部署完成）"
-                                Toast.makeText(context, "wanxiang 模型升级完成！", Toast.LENGTH_SHORT).show()
-                                title = "$originalGramTitle（版本：${getGramFileDate(context)} from $originalVersion）"
-                                summary = originalGramSummary
-                            }
-                        }
-                    } catch (e: Exception) {
-                        title = "$originalGramTitle（升级失败）"
-                        summary = "错误: ${e.message}"
-                        e.printStackTrace()
-                    } finally {
-                        delay(3000)
-                        isEnabled = true
-                    }
-                }
-                true
-            }
-        }
-
         // 按钮 E：升级 wanxiang 输入方案
         val upgradeWanXiangSchemaPrefDownloadToSAF = Preference(context).apply {
             key = "upgrade_wanxiang_schema_download_to_saf"
             title = originalSchemaTitle
             summary = originalSchemaSummary
-            order = 1002
+            order = 1005
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
                 if (rootUri == null) {
@@ -461,65 +520,6 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         }
                     } catch (e: Exception) {
                         title = "$originalSchemaTitle（升级失败）"
-                        summary = "错误: ${e.message}"
-                        e.printStackTrace()
-                    } finally {
-                        delay(3000)
-                        isEnabled = true
-                    }
-                }
-                true
-            }
-        }
-
-        // 按钮 C：升级 Q 主题
-        val upgradeQThemePrefUnzipToSAF = Preference(context).apply {
-            key = "upgrade_q_theme_unzip_to_saf"
-            title = originalThemeTitle
-            summary = originalThemeSummary
-            order = 1000
-            isIconSpaceReserved = false
-            setOnPreferenceClickListener {
-                if (rootUri == null) {
-                    Toast.makeText(context, "请先授权 rime 文件夹", Toast.LENGTH_LONG).show()
-                    return@setOnPreferenceClickListener true
-                }
-
-                // 禁止重复点击
-                isEnabled = false
-
-                // 使用主线程协程
-                viewLifecycleOwner.lifecycleScope.launch {
-                    try {
-                        val originalVersion = readVersion(context, "q_version")
-
-                        // 1. 先下载
-                        downloadToTempFile(context,
-                            "https://codeload.github.com/kingkongdog/trime-q-theme/zip/refs/heads/main",
-                            "theme_temp.zip", this@apply, originalThemeTitle)
-
-                        // 2. 再解压
-                        unzipToSAF(context, "theme_temp.zip", this@apply, originalThemeTitle)
-
-                        // 4. 执行部署 (假设 Trime 有对应的 Service 接口)
-                        viewModel.rime.launchOnReady {
-                            // 切换到主线程更新“部署中”状态
-                            launch(Dispatchers.Main) {
-                                title = "$originalThemeTitle（部署中。。。）"
-                            }
-
-                            it.deploy()
-
-                            // 部署完成后，再次切回主线程更新结果
-                            launch(Dispatchers.Main) {
-                                title = "$originalThemeTitle（部署完成）"
-                                Toast.makeText(context, "Q 主题升级完成！", Toast.LENGTH_SHORT).show()
-                                title = "$originalThemeTitle（版本：${readVersion(context, "q_version")} from $originalVersion）"
-                                summary = originalThemeSummary
-                            }
-                        }
-                    } catch (e: Exception) {
-                        title = "$originalThemeTitle（升级失败）"
                         summary = "错误: ${e.message}"
                         e.printStackTrace()
                     } finally {
