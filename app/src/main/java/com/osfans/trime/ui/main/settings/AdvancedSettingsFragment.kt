@@ -531,26 +531,30 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             ?: rootFolder.createFile("application/octet-stream", targetFileName)
 
         targetFile?.uri?.let { uri ->
-            // 包装流以监听下载进度
-            val progressStream = ProgressInputStream(sourceFile.inputStream()) { bytesRead ->
-                val totalSize = sourceFile.length()
-                // 计算 KB 和 MB
-                val kb = bytesRead / 1024.0
-                val mb = kb / 1024.0
-                // 始终显示已下载大小，超过 1MB 显示 MB，不足 1MB 显示 KB，保留两位小数
-                val size = if (mb >= 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
-                // 如果能获取总大小，显示百分比
-                val percent = if (totalSize > 0) String.format("，%.1f%%", bytesRead * 100.0 / totalSize) else ""
-                val title = "$originalTitle（移动中：$size$percent）"
-
-                CoroutineScope(Dispatchers.Main).launch {
-                    pref.title = title
-                }
-            }
-
-            progressStream.use { input ->
+            sourceFile.inputStream().use { input ->
                 context.contentResolver.openOutputStream(uri, "wt")?.use { output ->
-                    input.copyTo(output) // 这一步是纯本地拷贝，非常快
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    var totalRead = 0L
+                    val totalSize = sourceFile.length()
+
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        output.write(buffer, 0, bytesRead)
+                        totalRead += bytesRead
+
+                        // 计算 KB 和 MB
+                        val kb = totalRead / 1024.0
+                        val mb = kb / 1024.0
+                        // 始终显示已下载大小，超过 1MB 显示 MB，不足 1MB 显示 KB，保留两位小数
+                        val size = if (mb >= 1) String.format("%.2f MB", mb) else String.format("%.2f KB", kb)
+                        // 如果能获取总大小，显示百分比
+                        val percent = if (totalSize > 0) String.format("，%.1f%%", totalRead * 100.0 / totalSize) else ""
+                        val title = "$originalTitle（移动中：$size$percent）"
+
+                        withContext(Dispatchers.Main) {
+                            pref.title = title
+                        }
+                    }
                 }
             }
         }
