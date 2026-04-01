@@ -325,7 +325,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                         // 1. 先下载
                         downloadToTempFile(context,
                             "https://codeload.github.com/kingkongdog/rime_wanxiang/zip/refs/heads/wanxiang", 
-                            "schema_temp.zip", this@apply, originalSchemaTitle,)
+                            "schema_temp.zip", this@apply, originalSchemaTitle)
 
                         // 2. 再解压
 //                        unzipToSAF(context, localZip, this@apply, originalSchemaTitle)
@@ -533,11 +533,11 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
 
         preferenceScreen.addPreference(authPref)
         preferenceScreen.addPreference(importPref)
-        preferenceScreen.addPreference(upgradeQThemePref)
+//        preferenceScreen.addPreference(upgradeQThemePref)
         preferenceScreen.addPreference(upgradeQThemePrefUnzipToSAF)
-        preferenceScreen.addPreference(upgradeWanXiangGramPref)
+//        preferenceScreen.addPreference(upgradeWanXiangGramPref)
         preferenceScreen.addPreference(upgradeWanXiangGramPrefDownloadToSAF)
-        preferenceScreen.addPreference(upgradeWanXiangSchemaPref)
+//        preferenceScreen.addPreference(upgradeWanXiangSchemaPref)
         preferenceScreen.addPreference(upgradeWanXiangSchemaPrefDownloadToSAF)
 
         // viewLifecycleOwner.lifecycleScope 闪退：Can't access the Fragment View's LifecycleOwner
