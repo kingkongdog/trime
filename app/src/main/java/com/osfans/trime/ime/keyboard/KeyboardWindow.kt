@@ -109,7 +109,7 @@ class KeyboardWindow :
         lastKeyboardId = target
 
         val config = selectKeyboardConfig(target)
-        val keyboard = currentKeyboard ?: Keyboard(theme, config)
+        val keyboard = currentKeyboard ?: Keyboard(context, theme, config)
         val view = currentKeyboardView ?: KeyboardView(context, theme, keyboard, popup, service, keyboardActionListener, enterKeyDisplay)
 
         if (currentKeyboard == null) {
@@ -248,7 +248,7 @@ class KeyboardWindow :
                 if (!isAsciiMode) {
                     service.postRimeJob { setRuntimeOption("ascii_mode", true) }
                 }
-            } else if (theme.generalStyle.resetASCIIMode) {
+            } else if (theme.generalStyle.resetAsciiModeOnFocusChange) {
                 val targetMode = if (it.resetAsciiMode) it.asciiMode else it.lastAsciiMode
                 if (isAsciiMode != targetMode) {
                     service.postRimeJob { setRuntimeOption("ascii_mode", targetMode) }
