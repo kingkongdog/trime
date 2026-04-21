@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-name: My
+name: My-develop-branch
 
 on:
   push:
