@@ -46,6 +46,12 @@ class PreeditDelegate : InputBroadcastReceiver {
                 clipToOutline = true
                 outlineProvider = ViewOutlineProvider.BACKGROUND
                 horizontalPadding = dp(theme.preedit.horizontalPadding)
+                preedit.setPadding(
+                    preedit.paddingLeft,
+                    dp(theme.preedit.paddingTop),
+                    preedit.paddingRight,
+                    dp(theme.preedit.paddingBottom),
+                )
             },
             onMoveCursor = { pos -> rime.launchOnReady { it.moveCursorPos(pos) } },
         ).apply {
