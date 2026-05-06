@@ -328,18 +328,7 @@ class CommonKeyboardActionListener {
                     val (id, subType) = voiceInputSubType
                     InputMethodUtils.switchInputMethod(service, id, subType)
                 } else {
-                    // 如果没有标准的语音输入法，尝试启动语音识别Intent
-                    try {
-                        val intent = Intent("android.speech.action.RECOGNIZE_SPEECH").apply {
-                            putExtra("android.speech.extra.LANGUAGE_MODEL", "free_form")
-                            putExtra("android.speech.extra.PROMPT", "语音输入")
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        service.startActivity(intent)
-                    } catch (e: Exception) {
-                        Timber.w(e, "Failed to start voice recognition")
-                        service.toast(R.string.no_voice_input_installed)
-                    }
+                    service.toast(R.string.no_voice_input_installed)
                 }
             }
 
