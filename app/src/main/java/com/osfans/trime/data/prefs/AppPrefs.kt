@@ -105,8 +105,10 @@ class AppPrefs(
             R.string.preferred_voice_input,
             PREFERRED_VOICE_INPUT,
             "",
-            { InputMethodUtils.voiceInputMethods().map { it.id } },
-            { ctx -> InputMethodUtils.voiceInputMethods().map { it.label } },
+            { InputMethodUtils.voiceInputMethods().map { it.first.packageName } },
+            { ctx ->
+                InputMethodUtils.voiceInputMethods().map { it.first.loadLabel(ctx.packageManager) }
+            },
         )
     }
 
