@@ -314,19 +314,66 @@ class CommonKeyboardActionListener {
             }
 
             private fun switchToVoiceInputMethod() {
-                val pkgName = prefs.general.preferredVoiceInput.getValue()
-                val voiceInputSubType = if (pkgName.isNotEmpty()) {
-                    InputMethodUtils.voiceInputMethods().find {
-                        it.first.packageName == pkgName
-                    }?.let {
-                        it.first.id to it.second
-                    } ?: InputMethodUtils.firstVoiceInput()
-                } else {
-                    InputMethodUtils.firstVoiceInput()
+                val preferredOption = prefs.general.preferredVoiceInput.getValue()
+
+                if (preferredOption.startsWith("recognizer:")) {
+                    val pkgName = preferredOption.removePrefix("recognizer:")
+                    try {
+                        val intent = Intent("android.speech.action.RECOGNIZE_SPEECH").apply {
+                            `package` = pkgName
+                            putExtra("android.speech.extra.LANGUAGE_MODEL", "free_form")
+                            putExtra("android.speech.extra.PROMPT", "语音输入")
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        service.startActivity(intent)
+                    } catch (e: Exception) {
+                        Timber.w(e, "Failed to start voice recognizer")
+                        service.toast(R.string.no_voice_input_installed)
+                    }
+                    return
                 }
-                if (voiceInputSubType != null) {
-                    val (id, subType) = voiceInputSubType
-                    InputMethodUtils.switchInputMethod(service, id, subType)
+
+                if (preferredOption.isNotEmpty()) {
+                    val selectedMethod = InputMethodUtils.voiceInputMethods().find { it.first.packageName == preferredOption }
+                    if (selectedMethod != null) {
+                        val (info, subtype) = selectedMethod
+                        InputMethodUtils.switchInputMethod(service, info.id, subtype)
+                        return
+                    }
+                    if (InputMethodUtils.getVoiceRecognizers().contains(preferredOption)) {
+                        try {
+                            val intent = Intent("android.speech.action.RECOGNIZE_SPEECH").apply {
+                                `package` = preferredOption
+                                putExtra("android.speech.extra.LANGUAGE_MODEL", "free_form")
+                                putExtra("android.speech.extra.PROMPT", "语音输入")
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            service.startActivity(intent)
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to start voice recognizer")
+                            service.toast(R.string.no_voice_input_installed)
+                        }
+                        return
+                    }
+                }
+
+                InputMethodUtils.voiceInputMethods().firstOrNull()?.let { (info, subtype) ->
+                    InputMethodUtils.switchInputMethod(service, info.id, subtype)
+                    return
+                }
+
+                if (InputMethodUtils.getVoiceRecognizers().isNotEmpty()) {
+                    try {
+                        val intent = Intent("android.speech.action.RECOGNIZE_SPEECH").apply {
+                            putExtra("android.speech.extra.LANGUAGE_MODEL", "free_form")
+                            putExtra("android.speech.extra.PROMPT", "语音输入")
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        service.startActivity(intent)
+                    } catch (e: Exception) {
+                        Timber.w(e, "Failed to start voice recognizer")
+                        service.toast(R.string.no_voice_input_installed)
+                    }
                 } else {
                     service.toast(R.string.no_voice_input_installed)
                 }
