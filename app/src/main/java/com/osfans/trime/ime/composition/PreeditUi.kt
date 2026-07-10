@@ -52,7 +52,8 @@ open class PreeditUi(
 
     private fun CompositionProto.toSpannedString() = buildSpannedString {
         if (!preedit.isNullOrEmpty()) {
-            append(preedit)
+            val displayText = PreeditTextFormatter.format(preedit)
+            append(displayText)
             setSpan(ForegroundColorSpan(highlightTextColor), selStart, selEnd, Spanned.SPAN_INCLUSIVE_EXCLUSIVE)
         }
     }
