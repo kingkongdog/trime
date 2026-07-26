@@ -93,6 +93,13 @@
     <string name="quick_bar">快捷欄</string>
     <string name="copy_done">已複製</string>
     <string name="hook_shift_space">點擊空格時，忽略Shift的鎖定狀態</string>
+    <string name="test_input">測試輸入</string>
+    <string name="text">文字</string>
+    <string name="number">數字</string>
+    <string name="password">密碼</string>
+    <string name="type_text">輸入文字</string>
+    <string name="type_number">輸入數字</string>
+    <string name="type_password">輸入密碼</string>
     <string name="hook_shift_num">點擊0-9時，忽略Shift的鎖定狀態</string>
     <string name="hook_shift_symbol">點擊符號鍵時，忽略Shift的鎖定狀態</string>
     <string name="hook_shift_arrow">點選方向鍵時，保持Shift的鎖定狀態</string>
@@ -220,4 +227,5 @@
     <string name="share">分享</string>
     <string name="word_segment">分词</string>
     <string name="star_success">收藏成功</string>
+    <string name="ignore_system_gesture_insets">忽略系統手勢插邊</string>
 </resources>
