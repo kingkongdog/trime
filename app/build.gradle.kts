@@ -28,7 +28,7 @@ android {
         applicationId = "com.osfans.trime"
         minSdk = 21
         targetSdk = 35
-        versionCode = 20260601
+        versionCode = 20260726
         versionName = "3.3.12"
 
         multiDexEnabled = true
