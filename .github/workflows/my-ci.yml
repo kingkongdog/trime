@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - develop
+      - latest
   workflow_dispatch:
 
 env:
@@ -71,4 +72,4 @@ jobs:
         with:
           name: trime
           path: app/build/outputs/apk/release/*.apk
-          retention-days: 3
+          retention-days: 90

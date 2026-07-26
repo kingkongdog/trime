@@ -50,10 +50,20 @@ open class PreeditUi(
             }
         }
 
+    private fun String.toPreeditDisplayText(): String {
+        val index = indexOfFirst { it == '1' || it == '0' }
+        if (index == -1) return this
+        val replacement = when (this[index]) {
+            '1' -> "壹"
+            '0' -> "零"
+            else -> return this
+        }
+        return substring(0, index) + replacement + substring(index + 1)
+    }
+
     private fun CompositionProto.toSpannedString() = buildSpannedString {
         if (!preedit.isNullOrEmpty()) {
-            val displayText = PreeditTextFormatter.format(preedit)
-            append(displayText)
+            append(preedit.toPreeditDisplayText())
             setSpan(ForegroundColorSpan(highlightTextColor), selStart, selEnd, Spanned.SPAN_INCLUSIVE_EXCLUSIVE)
         }
     }

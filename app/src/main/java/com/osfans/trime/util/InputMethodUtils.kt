@@ -8,6 +8,7 @@ package com.osfans.trime.util
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
 import android.view.inputmethod.InputMethodInfo
@@ -60,12 +61,40 @@ object InputMethodUtils {
         .mapNotNull { info ->
             for (i in 0 until info.subtypeCount) {
                 val subType = info.getSubtypeAt(i)
-                if (subType.mode.lowercase() == "voice") {
+                if (subType.mode.lowercase() in listOf("voice", "speech")) {
                     return@mapNotNull info to subType
                 }
             }
             return@mapNotNull null
         }
+
+    fun getVoiceRecognizers(): List<String> {
+        val intent = Intent("android.speech.action.RECOGNIZE_SPEECH")
+        return appContext.packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            .mapNotNull { it.activityInfo.packageName }
+            .distinct()
+    }
+
+    fun getAllVoiceInputOptions(): List<Pair<String, String>> {
+        val pm = appContext.packageManager
+        val options = mutableListOf<Pair<String, String>>()
+
+        voiceInputMethods().forEach { (info, _) ->
+            options.add(info.packageName to info.loadLabel(pm).toString())
+        }
+
+        getVoiceRecognizers().forEach { pkgName ->
+            val optionId = "recognizer:$pkgName"
+            if (options.none { it.first == optionId }) {
+                val label = runCatching {
+                    pm.getApplicationLabel(pm.getApplicationInfo(pkgName, 0)).toString()
+                }.getOrElse { pkgName }
+                options.add(optionId to label)
+            }
+        }
+
+        return options
+    }
 
     fun firstVoiceInput(): Pair<String, InputMethodSubtype>? = voiceInputMethods()
         .firstNotNullOfOrNull { (info, subType) -> info.id to subType }

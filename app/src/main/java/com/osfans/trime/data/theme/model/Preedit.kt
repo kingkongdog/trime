@@ -15,6 +15,8 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class Preedit(
     val horizontalPadding: Int = 8,
+    val paddingTop: Int = 0,
+    val paddingBottom: Int = 0,
     val topEndRadius: Float = 0f,
     val alpha: Float = 0.8f,
     val foreground: Foreground = Foreground(),
@@ -34,6 +36,8 @@ data class Preedit(
     companion object {
         fun decode(node: Node.Mapping?): Preedit = Preedit(
             horizontalPadding = node?.get("horizontal_padding")?.int ?: 8,
+            paddingTop = node?.get("padding_top")?.int ?: 0,
+            paddingBottom = node?.get("padding_bottom")?.int ?: 0,
             topEndRadius = node?.get("top_end_radius")?.float ?: 0f,
             alpha = node?.get("alpha")?.float ?: 0.8f,
             foreground = Foreground.decode(node?.get("foreground")?.mapping),
