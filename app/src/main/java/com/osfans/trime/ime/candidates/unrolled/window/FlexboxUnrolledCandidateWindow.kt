@@ -53,7 +53,7 @@ class FlexboxUnrolledCandidateWindow : BaseUnrolledCandidateWindow() {
 
     override val layoutManager by lazy {
         FlexboxLayoutManager(context).apply {
-            justifyContent = JustifyContent.SPACE_AROUND
+            justifyContent = JustifyContent.SPACE_BETWEEN
             alignItems = AlignItems.FLEX_START
         }
     }
