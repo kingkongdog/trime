@@ -10,7 +10,7 @@ import android.view.ViewGroup
 import androidx.core.view.updateLayoutParams
 import com.chad.library.adapter4.BaseQuickAdapter
 import com.google.android.flexbox.FlexboxLayoutManager
-import com.osfans.trime.core.CandidateItem
+import com.osfans.trime.core.CandidateProto
 import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.ime.candidates.CandidateItemUi
 import com.osfans.trime.ime.candidates.CandidateViewHolder
@@ -21,7 +21,7 @@ import splitties.views.setPaddingDp
 
 open class CompactCandidateViewAdapter(
     val theme: Theme,
-) : BaseQuickAdapter<CandidateItem, CandidateViewHolder>() {
+) : BaseQuickAdapter<CandidateProto, CandidateViewHolder>() {
     init {
         setHasStableIds(true)
     }
@@ -46,7 +46,7 @@ open class CompactCandidateViewAdapter(
     }
 
     fun updateCandidates(
-        data: Array<CandidateItem>,
+        data: Array<CandidateProto>,
         total: Int,
         highlightedIndex: Int,
     ) {
@@ -73,7 +73,7 @@ open class CompactCandidateViewAdapter(
     override fun onBindViewHolder(
         holder: CandidateViewHolder,
         position: Int,
-        item: CandidateItem?,
+        item: CandidateProto?,
     ) {
         item ?: return
         val isHighlighted = position == highlightedIdx
