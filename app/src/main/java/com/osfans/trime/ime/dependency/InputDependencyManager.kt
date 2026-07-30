@@ -14,7 +14,6 @@ import com.osfans.trime.ime.broadcast.InputBroadcastReceiver
 import com.osfans.trime.ime.broadcast.InputBroadcaster
 import com.osfans.trime.ime.candidates.compact.CompactCandidateDelegate
 import com.osfans.trime.ime.composition.PreeditDelegate
-import com.osfans.trime.ime.core.InputView
 import com.osfans.trime.ime.core.TrimeInputMethodService
 import com.osfans.trime.ime.keyboard.CommonKeyboardActionListener
 import com.osfans.trime.ime.keyboard.KeyboardWindow
@@ -27,14 +26,12 @@ import org.kodein.di.bindSingleton
 import org.kodein.di.instance
 
 class InputDependencyManager(
-    inputView: InputView,
     context: Context,
     theme: Theme,
     service: TrimeInputMethodService,
     rime: RimeSession,
 ) {
     val inputModule = DI.Module("input") {
-        bindSingleton { inputView }
         bindSingleton { context }
         bindSingleton { theme }
         bindSingleton { service }
@@ -70,12 +67,11 @@ class InputDependencyManager(
         private var instance: InputDependencyManager? = null
 
         fun initialize(
-            inputView: InputView,
             context: Context,
             theme: Theme,
             service: TrimeInputMethodService,
             rime: RimeSession,
-        ): InputDependencyManager = InputDependencyManager(inputView, context, theme, service, rime).also {
+        ): InputDependencyManager = InputDependencyManager(context, theme, service, rime).also {
             instance = it
         }
 

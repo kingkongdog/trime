@@ -25,7 +25,6 @@ class PagedCandidatesUi(
     override val ctx: Context,
     val theme: Theme,
     private val onCandidateClick: (Int) -> Unit,
-    private val onCandidateAction: (Int, String, View) -> Unit,
     private val onPrevPage: () -> Unit,
     private val onNextPage: () -> Unit,
 ) : Ui {
@@ -89,10 +88,6 @@ class PagedCandidatesUi(
                         holder.ui.update(candidate, position == menu.highlightedCandidateIndex)
                         holder.ui.root.setOnClickListener {
                             onCandidateClick.invoke(position)
-                        }
-                        holder.ui.root.setOnLongClickListener { v ->
-                            onCandidateAction.invoke(position, candidate.text, v)
-                            true
                         }
                     }
                     is UiHolder.Pagination -> {
