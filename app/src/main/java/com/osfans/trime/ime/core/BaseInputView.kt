@@ -7,10 +7,16 @@ package com.osfans.trime.ime.core
 
 import android.annotation.SuppressLint
 import android.content.res.Resources
+import android.view.View
 import android.view.WindowInsets
+import android.widget.PopupMenu
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.text.bold
+import androidx.core.text.buildSpannedString
+import androidx.core.text.color
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import com.osfans.trime.R
 import com.osfans.trime.core.RimeMessage
 import com.osfans.trime.daemon.RimeSession
 import com.osfans.trime.data.prefs.AppPrefs
@@ -18,6 +24,7 @@ import com.osfans.trime.data.theme.ColorManager
 import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeManager
 import com.osfans.trime.data.theme.ThemePrefs
+import com.osfans.trime.ime.keyboard.InputFeedbackManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import splitties.dimensions.dp

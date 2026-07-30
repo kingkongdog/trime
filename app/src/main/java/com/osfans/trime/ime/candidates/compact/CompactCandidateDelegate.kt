@@ -33,7 +33,6 @@ import com.osfans.trime.ime.core.TrimeInputMethodService
 import com.osfans.trime.ime.dependency.InputDependencyManager
 import com.osfans.trime.ime.keyboard.InputFeedbackManager
 import com.osfans.trime.ime.core.InputView
-import com.osfans.trime.ime.core.TrimeInputMethodService
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow

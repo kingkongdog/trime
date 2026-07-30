@@ -10,7 +10,6 @@ import android.graphics.Color
 import android.view.View
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.isGone
-import com.osfans.trime.core.CandidateItem
 import androidx.core.view.isVisible
 import com.osfans.trime.core.CandidateProto
 import com.osfans.trime.data.theme.ColorManager
