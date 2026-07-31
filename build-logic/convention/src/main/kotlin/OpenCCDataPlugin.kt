@@ -76,7 +76,6 @@ class OpenCCDataPlugin : Plugin<Project> {
                     "TWVariantsRevPhrases",
                     "HKVariants",
                     "HKVariantsRevPhrases",
-                    "JPVariants",
                     "JPShinjitaiCharacters",
                     "JPShinjitaiPhrases",
                 )
