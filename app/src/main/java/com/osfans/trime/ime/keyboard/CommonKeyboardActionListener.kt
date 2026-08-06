@@ -12,11 +12,9 @@ import android.view.KeyEvent
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import com.osfans.trime.R
-import com.osfans.trime.core.KeyModifier
 import com.osfans.trime.core.KeyModifiers
 import com.osfans.trime.core.RimeApi
 import com.osfans.trime.core.RimeKeyEvent
-import com.osfans.trime.core.RimeKeyMapping
 import com.osfans.trime.daemon.RimeSession
 import com.osfans.trime.daemon.launchOnReady
 import com.osfans.trime.data.prefs.AppPrefs
@@ -27,7 +25,6 @@ import com.osfans.trime.ime.clipboard.ClipboardWindow
 import com.osfans.trime.ime.core.TrimeInputMethodService
 import com.osfans.trime.ime.dependency.InputDependencyManager
 import com.osfans.trime.ime.dialog.EnabledSchemaPickerDialog
-import com.osfans.trime.ime.enums.Keycode
 import com.osfans.trime.ime.switches.SwitchOptionWindow
 import com.osfans.trime.ime.symbol.LiquidData
 import com.osfans.trime.ime.symbol.LiquidWindow
@@ -59,8 +56,6 @@ class CommonKeyboardActionListener {
     private val liquidWindow: LiquidWindow by di.instance()
 
     private val prefs = AppPrefs.defaultInstance()
-
-    private var shouldReleaseKey: Boolean = false
 
     private fun showDialog(dialog: suspend (RimeApi) -> Dialog) {
         rime.launchOnReady { api ->
@@ -122,28 +117,15 @@ class CommonKeyboardActionListener {
                 }
             }
 
-            override fun onRelease(keyEventCode: Int) {
-                if (shouldReleaseKey) {
-                    // FIXME: 释放按键可能不对
-                    val value = RimeKeyMapping.keyCodeToVal(keyEventCode)
-                    if (value != RimeKeyMapping.RimeKey_VoidSymbol) {
-                        service.postRimeJob {
-                            processKey(value, KeyModifier.Release.modifier)
-                        }
-                    }
-                }
-            }
-
             override fun onAction(action: KeyAction) {
+                val text = action.getText(KeyboardSwitcher.currentKeyboard)
                 val shouldHandle = when {
                     action.commit.isNotEmpty() -> {
                         service.commitText(action.commit)
                         false
                     }
-                    KeyboardSwitcher.currentKeyboard.let { keyboard ->
-                        action.getText(keyboard).isNotEmpty()
-                    } -> {
-                        onText(action.getText(KeyboardSwitcher.currentKeyboard))
+                    text.isNotEmpty() -> {
+                        onText(text)
                         false
                     }
                     else -> true
@@ -417,12 +399,8 @@ class CommonKeyboardActionListener {
                 keyEventCode: Int,
                 metaState: Int,
             ) {
-                shouldReleaseKey = false
-                val value =
-                    RimeKeyMapping
-                        .keyCodeToVal(keyEventCode)
-                        .takeIf { it != RimeKeyMapping.RimeKey_VoidSymbol }
-                        ?: RimeKeyEvent.getKeycodeByName(Keycode.keyNameOf(keyEventCode))
+                val name = KeyCode.codeToKeyName(keyEventCode) ?: "VoidSymbol"
+                val value = RimeKeyEvent.getKeycodeByName(name)
                 val m = if (keyEventCode in KeyEvent.KEYCODE_NUMPAD_0..KeyEvent.KEYCODE_NUMPAD_EQUALS) {
                     metaState or KeyEvent.META_NUM_LOCK_ON
                 } else {
@@ -435,7 +413,6 @@ class CommonKeyboardActionListener {
                         return@postRimeJob
                     }
                     if (processKey(value, modifiers)) {
-                        shouldReleaseKey = true
                         Timber.d("handleKey: processKey")
                         return@postRimeJob
                     }
@@ -447,50 +424,51 @@ class CommonKeyboardActionListener {
                     if (keyEventCode == KeyEvent.KEYCODE_BACK) {
                         service.requestHideSelf(0)
                     }
-                    shouldReleaseKey = false
                 }
             }
 
-            override fun onText(text: String) {
-                if (text.isEmpty()) return
+            override fun onText(input: String) {
+                if (input.isEmpty()) return
+                Timber.d("onText: $input")
                 val status = rime.run { statusCached }
-                if (!text[0].isAsciiPrintable() && status.isComposing) {
+                if (!input[0].isAsciiPrintable() && status.isComposing) {
                     service.postRimeJob { commitComposition() }
                 }
 
-                var sequence = text
-                while (sequence.isNotEmpty()) {
-                    val slice =
-                        when {
-                            UNBRACED_CHAR.matches(sequence) -> UNBRACED_CHAR.matchEntire(sequence)?.groupValues?.get(1) ?: ""
-                            BRACED_KEY_EVENT.matches(sequence) -> BRACED_KEY_EVENT.matchEntire(sequence)?.groupValues?.get(1) ?: ""
-                            else -> sequence[0].toString()
-                        }
+                val escaped = input.replace("{}", "{braceleft}{braceright}")
+                var i = 0
+                while (i < escaped.length) {
+                    val value = when (val match = TEXT_INPUT_PATTERN.matchEntire(escaped.substring(i))) {
+                        match if (match != null) -> match.groupValues[1]
+                        else -> escaped[i].toString()
+                    }
 
                     service.postRimeJob {
-                        if (slice.run { startsWith('{') && endsWith('}') }) {
-                            onAction(KeyActionManager.getAction(slice))
-                        } else if (!slice[0].isAsciiPrintable()) {
-                            service.commitText(slice)
+                        if (value.run { startsWith('{') && endsWith('}') }) {
+                            val token = value.removeSurrounding("{", "}")
+                            onAction(KeyActionManager.getAction(token))
+                        } else if (!value[0].isAsciiPrintable()) {
+                            service.commitText(value)
                         } else {
-                            val escapedSlice = slice.replace("{}", "{braceleft}{braceright}")
-                            simulateKeySequence(escapedSlice)
+                            simulateKeySequence(value)
                         }
                     }
 
-                    sequence = sequence.substring(slice.length)
+                    i += value.length
                 }
-                shouldReleaseKey = false
             }
         }
     }
 
     companion object {
-        /** Pattern for braced key event like `{Left}`, `{Right}`, etc. */
-        private val BRACED_KEY_EVENT = """^(\{[^{}]+\}).*$""".toRegex()
-
-        /** Pattern for unbraced characters (including {Escape}) like `abc`, `{Escape}jk` etc. */
-        private val UNBRACED_CHAR = """^((\{Escape\})?[^{}]+).*$""".toRegex()
+        /**
+         * Regex for combined key events.
+         * group(1) captures either:
+         *   - a plain prefix (optionally preceded by {Escape}) from the left branch,
+         *   - or a standalone {xxx} block from the right branch.
+         * The trailing .* consumes the rest of the input without affecting group(1).
+         */
+        private val TEXT_INPUT_PATTERN = """^((?:\{Escape\})?[^{}]+|\{[^{}]+\}).*$""".toRegex()
 
         private val PLACEHOLDER_PATTERN = Regex(".*(%([1-4]\\$)?s).*")
     }
