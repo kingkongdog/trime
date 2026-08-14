@@ -63,7 +63,6 @@ data class TextKeyboard(
         val label: String,
         val labelSymbol: String,
         val hint: String,
-        val click: KeyActionToken?,
         val sendBindings: Boolean,
         val keyTextSize: Float,
         val symbolTextSize: Float,
@@ -83,6 +82,7 @@ data class TextKeyboard(
         val hlKeySymbolColor: String,
         val popup: List<String> = emptyList(),
         val behaviors: Map<KeyBehavior, KeyActionToken?>,
+        val hasClickAction: Boolean = behaviors[KeyBehavior.CLICK] != null,
     ) : Parcelable {
         companion object {
             fun decode(node: Node.Mapping): TextKey = TextKey(
@@ -93,7 +93,6 @@ data class TextKeyboard(
                 label = node["label"]?.string ?: "",
                 labelSymbol = node["label_symbol"]?.string ?: "",
                 hint = node["hint"]?.string ?: "",
-                click = KeyActionToken.decode(node["click"]),
                 sendBindings = node["send_bindings"]?.boolean ?: true,
                 keyTextSize = node["key_text_size"]?.float ?: 0f,
                 symbolTextSize = node["symbol_text_size"]?.float ?: 0f,
@@ -113,14 +112,15 @@ data class TextKeyboard(
                 hlKeySymbolColor = node["hilited_key_symbol_color"]?.string ?: "",
                 popup = node["popup"]?.sequence?.mapNotNull(Node::string) ?: emptyList(),
                 behaviors = KeyBehavior.entries
-                    .mapNotNull {
-                        val token = KeyActionToken.decode(node[it.name.lowercase()])
-                        if (token != null || it == KeyBehavior.CLICK) {
-                            it to token
-                        } else {
-                            null
-                        }
-                    }.toMap(),
+                    .associateWith { KeyActionToken.decode(node[it.name.lowercase()]) }
+                    .filter { (behavior, token) ->
+                        token?.let {
+                            when (it) {
+                                is KeyActionToken.Plain -> it.token.isNotEmpty()
+                                is KeyActionToken.Inline -> listOfNotNull(it.token.commit, it.token.text, it.token.label).isNotEmpty()
+                            }
+                        } ?: (behavior == KeyBehavior.CLICK)
+                    },
             )
         }
     }
