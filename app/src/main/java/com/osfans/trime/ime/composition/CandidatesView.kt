@@ -18,8 +18,8 @@ import androidx.core.graphics.component1
 import androidx.core.graphics.component2
 import androidx.core.graphics.component3
 import androidx.core.graphics.component4
+import com.osfans.trime.core.Candidates
 import com.osfans.trime.core.CompositionProto
-import com.osfans.trime.core.MenuProto
 import com.osfans.trime.core.RimeMessage
 import com.osfans.trime.daemon.RimeSession
 import com.osfans.trime.daemon.launchOnReady
@@ -57,7 +57,7 @@ class CandidatesView(
     private val layout by AppPrefs.defaultInstance().candidates.layout
     private val position by AppPrefs.defaultInstance().candidates.position
 
-    private var menu = MenuProto()
+    private var candidates = Candidates.Paged()
     private var composition = CompositionProto()
 
     private val anchorPosition = RectF()
@@ -114,8 +114,8 @@ class CandidatesView(
                 composition = it.data
                 updateUi()
             }
-            is RimeMessage.CandidateMenuMessage -> {
-                menu = it.data
+            is RimeMessage.PagedCandidatesMessage -> {
+                candidates = it.data
                 updateUi()
             }
             else -> {}
@@ -123,17 +123,13 @@ class CandidatesView(
     }
 
     private fun evaluateVisibility(): Boolean = !composition.preedit.isNullOrEmpty() ||
-        menu.candidates.isNotEmpty()
+        candidates.candidates.isNotEmpty()
 
     private fun updateUi() {
         preeditUi.update(composition)
         preeditUi.root.visibility = if (preeditUi.visible) VISIBLE else GONE
-        // if CandidatesView can be shown, rime engine is ready most of the time,
-        // so it should be safety to get option immediately
-        val isHorizontalLayout = rime.run {
-            getRuntimeOption("_linear") || getRuntimeOption("_horizontal")
-        }
-        candidatesUi.update(menu, isHorizontalLayout, layout)
+        // the candidate layout is queried natively with the page itself
+        candidatesUi.update(candidates, layout)
         if (evaluateVisibility()) {
             visibility = VISIBLE
         } else {

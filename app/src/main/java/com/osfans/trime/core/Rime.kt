@@ -124,10 +124,10 @@ class Rime :
             val commit = getRimeCommit()
             val input = getRimeRawInput()
             if (!commit.text.isNullOrEmpty() || input.isNotEmpty()) {
-                emitResponse { commit }
+                emitResponse(commit)
                 true
             } else {
-                emitResponse { CommitProto(sequence) }
+                emitResponse(CommitProto(sequence))
                 false
             }
         } else {
@@ -203,6 +203,7 @@ class Rime :
 
     override suspend fun setCandidatePagingMode(enabled: Boolean) = withRimeContext {
         pagingMode = enabled
+        emitResponse()
     }
 
     private fun startRime(fullCheck: Boolean) {
@@ -221,7 +222,7 @@ class Rime :
     }
 
     private fun processKeyInner(value: Int, modifiers: Int, isVirtual: Boolean): Boolean {
-        lastAsciiTipsText = asciiTipsText
+        lastAsciiTipsText = asciiTipsText(getRimeStatus())
         val handled = processRimeKey(value, modifiers)
         emitResponse()
         if (!handled) {
@@ -233,41 +234,25 @@ class Rime :
         return handled
     }
 
-    private val asciiTipsText: String
-        get() {
-            val status = getRimeStatus()
-            // return if (status.isAsciiMode) {
-            //     "En"
-            // } else if (status.schemaName.isNotEmpty() &&
-            //     !status.schemaName.startsWith('.')
-            // ) {
-            //     status.schemaName.take(2)
-            // } else {
-            //     ""
-            // }
-            return if (status.isAsciiMode) {
-                "En"
-            } else {
-                "中"
-            }
-        }
+    private fun asciiTipsText(status: StatusProto): String = when {
+        status.isAsciiMode -> "En"
+        // status.schemaName.isNotEmpty() && !status.schemaName.startsWith('.') ->
+        //     status.schemaName.take(2)
+        else -> "中"
+    }
 
-    private fun emitResponse(
-        commit: (() -> CommitProto) = { getRimeCommit() },
-    ) {
-        handleRimeMessage(4, arrayOf(commit.invoke()))
-        val context = getRimeContext()
-        handlePreedit(context.composition)
-        if (context.composition.length <= 0 && lastAsciiTipsText != asciiTipsText) {
-            showAsciiSwitchTips()
+    private fun emitResponse(commit: CommitProto? = null) {
+        val response = getRimeResponse(pagingMode)
+        handleRimeMessage(4, arrayOf(commit ?: response.commit))
+        handlePreedit(response.composition)
+        if (response.composition.length <= 0 && lastAsciiTipsText != asciiTipsText(response.status)) {
+            showAsciiSwitchTips(response.status)
         }
-        if (pagingMode) {
-            handleRimeMessage(7, arrayOf(context.menu))
-        } else {
-            val bulk = getRimeBulkCandidates()
-            handleRimeMessage(9, bulk)
+        when (val candidates = response.candidates) {
+            is Candidates.Paged -> handleRimeMessage(7, arrayOf(candidates))
+            is Candidates.Bulk -> handleRimeMessage(9, arrayOf(candidates))
         }
-        handleRimeMessage(8, arrayOf(getRimeStatus()))
+        handleRimeMessage(8, arrayOf(response.status))
     }
 
     private fun handlePreedit(composition: CompositionProto) {
@@ -302,7 +287,7 @@ class Rime :
                 statusCached = status
                 updateSchemaCached(status)
                 if (it.data.option == "ascii_mode") {
-                    showAsciiSwitchTips()
+                    showAsciiSwitchTips(status)
                 }
             }
             is RimeMessage.DeployMessage -> {
@@ -314,12 +299,12 @@ class Rime :
                 val composition = it.data
                 compositionCached = composition
             }
-            is RimeMessage.CandidateMenuMessage -> {
-                val menu = it.data
-                paging = menu.pageNumber != 0
-                hasMenu = menu.candidates.isNotEmpty()
+            is RimeMessage.PagedCandidatesMessage -> {
+                val paged = it.data
+                paging = paged.hasPrevPage
+                hasMenu = paged.candidates.isNotEmpty()
             }
-            is RimeMessage.CandidateListMessage -> {
+            is RimeMessage.BulkCandidatesMessage -> {
                 hasMenu = it.data.candidates.isNotEmpty()
             }
             is RimeMessage.StatusMessage -> {
@@ -344,9 +329,9 @@ class Rime :
         }
     }
 
-    private fun showAsciiSwitchTips() {
+    private fun showAsciiSwitchTips(status: StatusProto) {
         if (!showAsciiSwitchTips) return
-        val tipsText = asciiTipsText
+        val tipsText = asciiTipsText(status)
         if (tipsText.isEmpty()) return
 
         lastAsciiTipsText = tipsText
@@ -509,7 +494,7 @@ class Rime :
         ): Array<CandidateProto>
 
         @JvmStatic
-        external fun getRimeBulkCandidates(): Array<Any>
+        external fun getRimeResponse(pagingMode: Boolean): RimeResponse
 
         @JvmStatic
         fun handleRimeMessage(

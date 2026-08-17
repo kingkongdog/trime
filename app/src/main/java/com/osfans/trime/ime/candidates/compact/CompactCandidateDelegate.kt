@@ -19,7 +19,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.flexbox.FlexboxLayoutManager
 import com.osfans.trime.R
-import com.osfans.trime.core.RimeMessage
+import com.osfans.trime.core.Candidates
 import com.osfans.trime.daemon.RimeSession
 import com.osfans.trime.daemon.launchOnReady
 import com.osfans.trime.data.prefs.AppPrefs
@@ -171,7 +171,7 @@ class CompactCandidateDelegate : InputBroadcastReceiver {
         }
     }
 
-    override fun onCandidateListUpdate(data: RimeMessage.CandidateListMessage.Data) {
+    override fun onCandidateListUpdate(data: Candidates.Bulk) {
         val (total, highlighted, candidates) = data
 
         val maxSpanCount = maxSpanCountPref.getValue()

@@ -314,16 +314,8 @@ class InputView(
                 }
                 broadcaster.onCompositionUpdate(data)
             }
-            is RimeMessage.CandidateMenuMessage -> {
-                broadcaster.onCandidateMenuUpdate(it.data)
-            }
-            is RimeMessage.CandidateListMessage -> {
-                val data = if (candidatesMode == PopupCandidatesMode.ALWAYS_SHOW) {
-                    RimeMessage.CandidateListMessage.Data()
-                } else {
-                    it.data
-                }
-                broadcaster.onCandidateListUpdate(data)
+            is RimeMessage.BulkCandidatesMessage -> {
+                broadcaster.onCandidateListUpdate(it.data)
             }
             else -> {}
         }
