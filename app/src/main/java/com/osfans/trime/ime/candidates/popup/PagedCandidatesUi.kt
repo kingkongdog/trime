@@ -94,13 +94,13 @@ class PagedCandidatesUi(
                         holder.ui.root.setOnClickListener {
                             onCandidateClick.invoke(position)
                         }
-                        holder.ui.root.setOnLongClickListener { v ->
-                            onCandidateAction.invoke(position, candidate.text, v)
-                            true
-                        }
-                        holder.ui.root.updateLayoutParams<FlexboxLayoutManager.LayoutParams> {
-                            width = if (isHorizontal) WRAP_CONTENT else MATCH_PARENT
-                        }
+                        // holder.ui.root.setOnLongClickListener { v ->
+                        //     onCandidateAction.invoke(position, candidate.text, v)
+                        //     true
+                        // }
+                        // holder.ui.root.updateLayoutParams<FlexboxLayoutManager.LayoutParams> {
+                        //     width = if (isHorizontal) WRAP_CONTENT else MATCH_PARENT
+                        // }
                     }
                     is UiHolder.Pagination -> {
                         holder.ui.update(candidates)
