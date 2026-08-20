@@ -54,8 +54,8 @@ open class PreeditUi(
         val index = indexOfFirst { it == '1' || it == '0' }
         if (index == -1) return this
         val replacement = when (this[index]) {
-            '1' -> "壹"
-            '0' -> "零"
+            '1' -> "❶"
+            '0' -> "⓿"
             else -> return this
         }
         return substring(0, index) + replacement + substring(index + 1)
