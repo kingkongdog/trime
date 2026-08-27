@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
 import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -179,40 +178,12 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             }
         }
 
-        // 按钮 C：移动 privacy.lua 到 rime 文件夹
-        val movePrivacyPref = Preference(context).apply {
-            key = "move_privacy_lua"
-            title = "移动 privacy.lua"
-            summary = "将应用根目录的 privacy.lua 移动到授权的 rime 文件夹"
-            order = 1000
-            isIconSpaceReserved = false
-            setOnPreferenceClickListener {
-                if (rootUri == null) {
-                    Toast.makeText(context, "请先授权 rime 文件夹", Toast.LENGTH_LONG).show()
-                    return@setOnPreferenceClickListener true
-                }
-
-                isEnabled = false
-                lifecycleScope.launch {
-                    try {
-                        movePrivacyLuaToAuthorizedFolder(context)
-                        Toast.makeText(context, "privacy.lua 移动成功", Toast.LENGTH_SHORT).show()
-                    } catch (e: Exception) {
-                        Toast.makeText(context, "privacy.lua 移动失败：${e.message}", Toast.LENGTH_LONG).show()
-                    } finally {
-                        isEnabled = true
-                    }
-                }
-                true
-            }
-        }
-
-        // 按钮 D：升级 Q 主题
+        // 按钮 C：升级 Q 主题
         val upgradeQThemePref = Preference(context).apply {
             key = "upgrade_q_theme"
             title = originalThemeTitle
             summary = originalThemeSummary
-            order = 1001
+            order = 1000
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
                 if (rootUri == null) {
@@ -277,7 +248,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             key = "upgrade_q_theme_unzip_to_saf"
             title = originalThemeTitle
             summary = originalThemeSummary
-            order = 1002
+            order = 1001
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
                 if (rootUri == null) {
@@ -336,7 +307,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             key = "upgrade_wanxiang_gram"
             title = originalGramTitle
             summary = originalGramSummary
-            order = 1003
+            order = 1002
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
                 if (rootUri == null) {
@@ -395,7 +366,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             key = "upgrade_wanxiang_gram_download_to_saf"
             title = originalGramTitle
             summary = originalGramSummary
-            order = 1004
+            order = 1003
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
                 if (rootUri == null) {
@@ -448,7 +419,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             key = "upgrade_wanxiang_schema"
             title = originalSchemaTitle
             summary = originalSchemaSummary
-            order = 1005
+            order = 1004
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
                 if (rootUri == null) {
@@ -513,7 +484,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             key = "upgrade_wanxiang_schema_download_to_saf"
             title = originalSchemaTitle
             summary = originalSchemaSummary
-            order = 1006
+            order = 1005
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
                 if (rootUri == null) {
@@ -563,7 +534,6 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
 
         preferenceScreen.addPreference(authPref)
         preferenceScreen.addPreference(importPref)
-        preferenceScreen.addPreference(movePrivacyPref)
         // preferenceScreen.addPreference(upgradeQThemePref)
         preferenceScreen.addPreference(upgradeQThemePrefUnzipToSAF)
         // preferenceScreen.addPreference(upgradeWanXiangGramPref)
@@ -1004,36 +974,6 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
                     input.copyTo(output)
                 }
             }
-        }
-    }
-
-    private suspend fun movePrivacyLuaToAuthorizedFolder(context: Context) = withContext(Dispatchers.IO) {
-        val sourceFile = File(Environment.getExternalStorageDirectory(), "privacy.lua")
-        if (!sourceFile.isFile) {
-            throw Exception("应用根目录中不存在 privacy.lua")
-        }
-
-        val treeUri = rootUri ?: throw Exception("未授权 rime 文件夹")
-        val rootFolder = DocumentFile.fromTreeUri(context, treeUri)
-            ?: throw Exception("无法解析授权的 rime 文件夹")
-        if (!rootFolder.isDirectory) {
-            throw Exception("授权目标不是文件夹")
-        }
-
-        rootFolder.findFile(sourceFile.name)?.delete()
-        val targetFile = rootFolder.createFile("text/plain", sourceFile.name)
-            ?: throw Exception("无法创建目标文件")
-
-        try {
-            sourceFile.inputStream().use { input ->
-                context.contentResolver.openOutputStream(targetFile.uri, "wt")?.use { output ->
-                    input.copyTo(output)
-                } ?: throw Exception("无法写入目标文件")
-            }
-            sourceFile.delete()
-        } catch (e: Exception) {
-            targetFile.delete()
-            throw e
         }
     }
 
