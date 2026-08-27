@@ -182,7 +182,7 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
         // 按钮 C：移动 privacy.lua 到 rime 文件夹
         val movePrivacyPref = Preference(context).apply {
             key = "move_privacy_lua"
-            title = "移动 privacy.lua"
+            title = "导入 privacy.lua"
             summary = "将应用根目录的 privacy.lua 移动到授权的 rime 文件夹"
             order = 1000
             isIconSpaceReserved = false
