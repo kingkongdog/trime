@@ -9,9 +9,12 @@ import com.osfans.trime.BuildConfig
 import com.osfans.trime.data.base.DataManager
 import com.osfans.trime.data.opencc.OpenCCDictManager
 import com.osfans.trime.data.prefs.AppPrefs
+import com.osfans.trime.data.sync.ExternalSyncFallback
+import com.osfans.trime.data.sync.RimeDataSync
 import com.osfans.trime.ime.core.InlinePreeditMode
 import com.osfans.trime.util.appContext
-import com.osfans.trime.util.isStorageAvailable
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
@@ -19,7 +22,10 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import timber.log.Timber
+import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * Rime JNI and instance methods
@@ -88,9 +94,51 @@ class Rime :
         getCurrentRimeSchema() == ".default" // 無方案
     }
 
-    override suspend fun deploy() = withRimeContext {
-        exitRime()
-        startRime(true)
+    override suspend fun deploy(skipImport: Boolean) = RimeMaintenanceMutex.withLock {
+        if (RimeDataSync.usesExternalSync()) {
+            if (!RimeDataSync.hasExternalAccess(appContext)) {
+                ExternalSyncFallback.fallbackToAppStorage(appContext)
+            }
+        }
+        if (RimeDataSync.usesExternalSync() && !skipImport) {
+            val importResult =
+                RimeDataSync.importToLocal(appContext, keepNotificationUntilDeploySuccess = true)
+            if (importResult.isFailure) {
+                ExternalSyncFallback.fallbackToAppStorage(appContext, importResult.exceptionOrNull())
+            } else {
+                Timber.i("Import finished: ${importResult.getOrNull()}")
+            }
+        }
+        val deployFinished = CompletableDeferred<Boolean>()
+        val deployHandler: (RimeMessage<*>) -> Unit = { message ->
+            if (message is RimeMessage.DeployMessage) {
+                when (message.data) {
+                    RimeMessage.DeployMessage.State.Start -> Unit
+                    RimeMessage.DeployMessage.State.Success -> {
+                        deployFinished.complete(true)
+                    }
+                    RimeMessage.DeployMessage.State.Failure -> {
+                        deployFinished.complete(false)
+                    }
+                }
+            }
+        }
+        registerRimeMessageHandler(deployHandler)
+        try {
+            withRimeContext {
+                exitRime()
+                startRime(true)
+            }
+            val success =
+                withContext(Dispatchers.IO) {
+                    withTimeout(5.minutes) {
+                        deployFinished.await()
+                    }
+                }
+            check(success) { "Rime deploy failed" }
+        } finally {
+            unregisterRimeMessageHandler(deployHandler)
+        }
     }
 
     override suspend fun updateConfig() = withRimeContext {
@@ -98,8 +146,43 @@ class Rime :
         startRime(false)
     }
 
-    override suspend fun syncUserData(): Boolean = withRimeContext {
-        syncRimeUserData()
+    override suspend fun syncUserData(): Boolean = RimeMaintenanceMutex.withLock {
+        // RimeSyncUserData schedules maintenance asynchronously and returns once the
+        // worker is started. Wait for DeployMessage so callers (e.g. export) only
+        // proceed after sync/<installation_id>/ has been written.
+        val syncFinished = CompletableDeferred<Boolean>()
+        val syncHandler: (RimeMessage<*>) -> Unit = { message ->
+            if (message is RimeMessage.DeployMessage) {
+                when (message.data) {
+                    RimeMessage.DeployMessage.State.Success -> syncFinished.complete(true)
+                    RimeMessage.DeployMessage.State.Failure -> syncFinished.complete(false)
+                    else -> {}
+                }
+            }
+        }
+        registerRimeMessageHandler(syncHandler)
+        val syncOk =
+            try {
+                val started = withRimeContext { syncRimeUserData() }
+                if (!started) {
+                    false
+                } else {
+                    withContext(Dispatchers.IO) {
+                        withTimeout(5.minutes) {
+                            syncFinished.await()
+                        }
+                    }
+                }
+            } finally {
+                unregisterRimeMessageHandler(syncHandler)
+            }
+        if (!syncOk) return@withLock false
+        if (!RimeDataSync.usesExternalSync()) return@withLock true
+        if (!RimeDataSync.hasExternalAccess(appContext)) {
+            Timber.w("Export skipped: no data path selected")
+            return@withLock false
+        }
+        RimeDataSync.exportToExternal(appContext).isSuccess
     }
 
     override suspend fun processKey(
@@ -348,7 +431,7 @@ class Rime :
     }
 
     fun startup() {
-        if (!appContext.isStorageAvailable()) {
+        if (!RimeDataSync.isStorageAvailable(appContext)) {
             Timber.w("Skip starting rime: storage not available!")
             return
         }
@@ -384,7 +467,7 @@ class Rime :
                 onBufferOverflow = BufferOverflow.DROP_OLDEST,
             )
 
-        private val rimeMessageHandlers = ArrayList<(RimeMessage<*>) -> Unit>()
+        private val rimeMessageHandlers = CopyOnWriteArrayList<(RimeMessage<*>) -> Unit>()
 
         init {
             System.loadLibrary("rime_jni")

@@ -60,6 +60,11 @@ class MainActivity : AppCompatActivity() {
             }
         AppCompatDelegate.setDefaultNightMode(uiMode)
         super.onCreate(savedInstanceState)
+        if (SetupActivity.shouldSetup()) {
+            startActivity<SetupActivity>()
+            finish()
+            return
+        }
         enableEdgeToEdge()
         val binding = ActivityMainBinding.inflate(layoutInflater)
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
