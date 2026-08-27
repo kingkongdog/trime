@@ -154,12 +154,13 @@ class AdvancedSettingsFragment : PreferenceDelegateFragment(AppPrefs.defaultInst
             order = 998
             isIconSpaceReserved = false
             setOnPreferenceClickListener {
+                folderPickerLauncher.launch(null)
                 // 检查是否已经存在授权
-                if (rootUri == null) {
-                    folderPickerLauncher.launch(null)
-                } else {
-                    Toast.makeText(context, "已经授权过 rime 目录，无需重复操作", Toast.LENGTH_SHORT).show()
-                }
+                // if (rootUri == null) {
+                //     folderPickerLauncher.launch(null)
+                // } else {
+                //     Toast.makeText(context, "已经授权过 rime 目录，无需重复操作", Toast.LENGTH_SHORT).show()
+                // }
                 true
             }
         }
