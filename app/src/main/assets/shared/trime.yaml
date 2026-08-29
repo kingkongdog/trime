@@ -66,6 +66,7 @@ style:
 preedit:                  # 预编辑文本视图参数
   horizontal_padding: 8     # 横向内边距（整数）
 #  alpha: 0.8                 # 透明度（0-1，浮点）
+  top_start_radius: 4       # 始上端圆角（浮点）
   top_end_radius: 4         # 末上端圆角（浮点）
   foreground:               # 前景样式
     font_size: 16             # 预编辑字体大小（浮点）
@@ -102,21 +103,30 @@ fallback_colors:
 #  hilited_label_color: hilited_candidate_text_color # 高亮候选序号 颜色
 #  hilited_comment_text_color: comment_text_color
 #  hilited_key_back_color: hilited_candidate_back_color
+#  hilited_key_border_color: key_border_color
 #  hilited_key_text_color: hilited_candidate_text_color
 #  hilited_key_symbol_color: hilited_comment_text_color
 #  hilited_off_key_back_color: hilited_key_back_color
+#  hilited_off_key_border_color: hilited_key_border_color
 #  hilited_on_key_back_color: hilited_key_back_color
+#  hilited_on_key_border_color: hilited_key_border_color
 #  hilited_off_key_text_color: hilited_key_text_color
 #  hilited_on_key_text_color: hilited_key_text_color
+#  hilited_off_key_symbol_color: hilited_key_symbol_color
+#  hilited_on_key_symbol_color: hilited_key_symbol_color
 #  key_back_color: back_color
 #  key_border_color: border_color
 #  key_text_color: candidate_text_color
 #  key_symbol_color: comment_text_color
 #  label_color: candidate_text_color
 #  off_key_back_color: key_back_color
+#  off_key_border_color: key_border_color
 #  off_key_text_color: key_text_color
+#  off_key_symbol_color: key_symbol_color
 #  on_key_back_color: hilited_key_back_color
+#  on_key_border_color: hilited_key_border_color
 #  on_key_text_color: hilited_key_text_color
+#  on_key_symbol_color: hilited_key_symbol_color
 #  preview_back_color: key_back_color
 #  preview_text_color: key_text_color
 #  shadow_color: border_color
