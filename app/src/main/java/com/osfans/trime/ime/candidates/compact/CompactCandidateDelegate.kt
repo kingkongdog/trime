@@ -22,6 +22,7 @@ import com.osfans.trime.R
 import com.osfans.trime.core.Candidates
 import com.osfans.trime.daemon.RimeSession
 import com.osfans.trime.daemon.launchOnReady
+import com.osfans.trime.data.theme.ColorManager
 import com.osfans.trime.data.prefs.AppPrefs
 import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeScope
@@ -48,6 +49,7 @@ class CompactCandidateDelegate(override val di: DI) :
     DIAware,
     InputBroadcastReceiver {
     private val context: ContextThemeWrapper by instance()
+    private val service: TrimeInputMethodService by instance()
     private val rime: RimeSession by instance()
     private val scope: ThemeScope by instance()
     private val inputView: InputView by instance()

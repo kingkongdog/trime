@@ -11,6 +11,7 @@ import androidx.core.view.updateLayoutParams
 import com.chad.library.adapter4.BaseQuickAdapter
 import com.google.android.flexbox.FlexboxLayoutManager
 import com.osfans.trime.core.CandidateProto
+import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.ime.candidates.CandidateItemUi
 import com.osfans.trime.ime.candidates.CandidateViewHolder
@@ -22,6 +23,9 @@ import splitties.views.setPaddingDp
 open class CompactCandidateViewAdapter(
     val scope: ThemeScope,
 ) : BaseQuickAdapter<CandidateProto, CandidateViewHolder>() {
+    private val theme: Theme
+        get() = scope.theme
+
     init {
         setHasStableIds(true)
     }

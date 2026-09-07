@@ -37,15 +37,15 @@ class InputDependencyManager(
         bindSingleton { service }
         bindSingleton { rime }
         bindSingleton { InputBroadcaster() }
-        bindSingleton { PopupDelegate() }
-        bindSingleton { EnterKeyDisplayDelegate() }
-        bindSingleton { PreeditDelegate() }
-        bindSingleton { CommonKeyboardActionListener() }
-        bindSingleton { BoardWindowManager() }
-        bindSingleton { InputBarDelegate() }
-        bindSingleton { CompactCandidateDelegate() }
-        bindSingleton { KeyboardWindow() }
-        bindSingleton { LiquidWindow() }
+        bindSingleton { PopupDelegate(di) }
+        bindSingleton { EnterKeyDisplayDelegate(di) }
+        bindSingleton { PreeditDelegate(di) }
+        bindSingleton { CommonKeyboardActionListener(di) }
+        bindSingleton { BoardWindowManager(di) }
+        bindSingleton { InputBarDelegate(di) }
+        bindSingleton { CompactCandidateDelegate(di) }
+        bindSingleton { KeyboardWindow(di) }
+        bindSingleton { LiquidWindow(di) }
     }
 
     val di = DI {

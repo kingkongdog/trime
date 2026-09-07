@@ -27,6 +27,7 @@ import com.osfans.trime.ime.candidates.unrolled.CandidatesPagingSource
 import com.osfans.trime.ime.candidates.unrolled.PagingCandidateViewAdapter
 import com.osfans.trime.ime.candidates.unrolled.UnrolledCandidateLayout
 import com.osfans.trime.ime.core.TrimeInputMethodService
+import com.osfans.trime.ime.core.InputView
 import com.osfans.trime.ime.keyboard.KeyboardWindow
 import com.osfans.trime.ime.window.BoardWindow
 import com.osfans.trime.ime.window.BoardWindowManager
