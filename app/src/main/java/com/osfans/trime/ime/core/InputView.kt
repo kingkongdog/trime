@@ -7,6 +7,7 @@ package com.osfans.trime.ime.core
 
 import android.annotation.SuppressLint
 import android.os.Build
+import android.view.ContextThemeWrapper
 import android.view.View
 import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
@@ -21,14 +22,16 @@ import com.osfans.trime.core.CompositionProto
 import com.osfans.trime.core.RimeMessage
 import com.osfans.trime.daemon.RimeSession
 import com.osfans.trime.data.prefs.AppPrefs
-import com.osfans.trime.data.theme.ColorManager
 import com.osfans.trime.data.theme.Theme
+import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.ime.bar.InputBarDelegate
 import com.osfans.trime.ime.broadcast.EnterKeyDisplayDelegate
+import com.osfans.trime.ime.broadcast.InputBroadcastReceiver
 import com.osfans.trime.ime.broadcast.InputBroadcaster
+import com.osfans.trime.ime.candidates.compact.CompactCandidateDelegate
 import com.osfans.trime.ime.candidates.popup.PopupCandidatesMode
 import com.osfans.trime.ime.composition.PreeditDelegate
-import com.osfans.trime.ime.dependency.InputDependencyManager
+import com.osfans.trime.ime.keyboard.CommonKeyboardActionListener
 import com.osfans.trime.ime.keyboard.KeyboardPrefs.isLandscapeMode
 import com.osfans.trime.ime.keyboard.KeyboardWindow
 import com.osfans.trime.ime.popup.PopupDelegate
@@ -36,6 +39,11 @@ import com.osfans.trime.ime.symbol.LiquidWindow
 import com.osfans.trime.ime.window.BoardWindowManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import org.kodein.di.DI
+import org.kodein.di.DIAware
+import org.kodein.di.allInstances
+import org.kodein.di.bindInstance
+import org.kodein.di.bindSingleton
 import org.kodein.di.instance
 import splitties.dimensions.dp
 import splitties.views.dsl.constraintlayout.above
@@ -64,8 +72,9 @@ import splitties.views.imageDrawable
 class InputView(
     service: TrimeInputMethodService,
     rime: RimeSession,
-    theme: Theme,
-) : BaseInputView(service, rime, theme) {
+    scope: ThemeScope,
+) : BaseInputView(service, rime, scope),
+    DIAware {
     private val keyboardBackground =
         imageView {
             scaleType = ImageView.ScaleType.CENTER_CROP
@@ -92,16 +101,33 @@ class InputView(
 
     private val updateWindowViewHeightJob: Job
 
-    private val inputDepMgr = InputDependencyManager.initialize(themedContext, theme, service, rime)
-    private val di = inputDepMgr.di
-    private val broadcaster: InputBroadcaster by di.instance()
-    private val popup: PopupDelegate by di.instance()
-    private val enterKeyDisplay: EnterKeyDisplayDelegate by di.instance()
-    private val preedit: PreeditDelegate by di.instance()
-    private val windowManager: BoardWindowManager by di.instance()
-    private val inputBar: InputBarDelegate by di.instance()
-    private val keyboardWindow: KeyboardWindow by di.instance()
-    private val liquidWindow: LiquidWindow by di.instance()
+    override val di = DI {
+        bindInstance<InputView> { this@InputView }
+        bindInstance<ContextThemeWrapper> { themedContext }
+        bindInstance<ThemeScope> { scope }
+        bindInstance<Theme> { scope.theme }
+        bindInstance<TrimeInputMethodService> { service }
+        bindInstance<RimeSession> { rime }
+        bindSingleton { InputBroadcaster() }
+        bindSingleton { PopupDelegate(di) }
+        bindSingleton { EnterKeyDisplayDelegate(di) }
+        bindSingleton { PreeditDelegate(di) }
+        bindSingleton { CommonKeyboardActionListener(di) }
+        bindSingleton { BoardWindowManager(di) }
+        bindSingleton { InputBarDelegate(di) }
+        bindSingleton { CompactCandidateDelegate(di) }
+        bindSingleton { KeyboardWindow(di) }
+        bindSingleton { LiquidWindow(di) }
+    }
+
+    private val broadcaster: InputBroadcaster by instance()
+    private val popup: PopupDelegate by instance()
+    private val enterKeyDisplay: EnterKeyDisplayDelegate by instance()
+    private val preedit: PreeditDelegate by instance()
+    private val windowManager: BoardWindowManager by instance()
+    private val inputBar: InputBarDelegate by instance()
+    private val keyboardWindow: KeyboardWindow by instance()
+    private val liquidWindow: LiquidWindow by instance()
 
     private val candidatesMode by AppPrefs.defaultInstance().candidates.mode
 
@@ -139,16 +165,26 @@ class InputView(
 
     val keyboardView: View
 
+    /** Restyles colors after a scheme switch without rebuilding the view tree. */
+    fun refreshColors() {
+        keyboardBackground.imageDrawable = scope.drawable("keyboard_background")
+        keyboardWindow.refreshColors()
+        inputBar.refreshColors()
+        preedit.refreshColors()
+        windowManager.refreshColors()
+    }
+
     init {
         // MUST call before any operation
-        inputDepMgr.start()
+        val receivers: List<InputBroadcastReceiver> by allInstances()
+        receivers.forEach { broadcaster.addReceiver(it) }
 
         windowManager.cacheResidentWindow(keyboardWindow, createView = true)
         windowManager.cacheResidentWindow(liquidWindow)
         // show KeyboardWindow by default
         windowManager.attachWindow(KeyboardWindow)
 
-        keyboardBackground.imageDrawable = ColorManager.getDrawable("keyboard_background")
+        keyboardBackground.imageDrawable = scope.drawable("keyboard_background")
 
         keyboardView =
             constraintLayout {
@@ -342,7 +378,7 @@ class InputView(
         // implies that InputView should not be attached again after detached.
         updateWindowViewHeightJob.cancel()
         popup.root.removeAllViews()
-        inputDepMgr.stop()
+        broadcaster.clear()
         super.onDetachedFromWindow()
     }
 }

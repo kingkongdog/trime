@@ -16,8 +16,8 @@ import androidx.paging.PagingConfig
 import androidx.recyclerview.widget.RecyclerView
 import com.osfans.trime.daemon.RimeSession
 import com.osfans.trime.daemon.launchOnReady
-import com.osfans.trime.data.theme.ColorManager
 import com.osfans.trime.data.theme.Theme
+import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.ime.bar.InputBarDelegate
 import com.osfans.trime.ime.bar.UnrollButtonStateMachine
 import com.osfans.trime.ime.broadcast.InputBroadcastReceiver
@@ -33,19 +33,24 @@ import com.osfans.trime.ime.window.BoardWindowManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.kodein.di.DI
 import org.kodein.di.instance
 import splitties.dimensions.dp
 import kotlin.math.max
 
-abstract class BaseUnrolledCandidateWindow :
-    BoardWindow.NoBarBoardWindow(),
+abstract class BaseUnrolledCandidateWindow(di: DI) :
+    BoardWindow.NoBarBoardWindow(di),
     InputBroadcastReceiver {
-    protected val service: TrimeInputMethodService by di.instance()
-    protected val rime: RimeSession by di.instance()
-    protected val theme: Theme by di.instance()
-    private val bar: InputBarDelegate by di.instance()
-    private val windowManager: BoardWindowManager by di.instance()
-    private val compactCandidate: CompactCandidateDelegate by di.instance()
+    protected val service: TrimeInputMethodService by instance()
+    protected val rime: RimeSession by instance()
+    protected val scope: ThemeScope by instance()
+    private val inputView: InputView by instance()
+    private val bar: InputBarDelegate by instance()
+    private val windowManager: BoardWindowManager by instance()
+    private val compactCandidate: CompactCandidateDelegate by instance()
+
+    protected val theme: Theme
+        get() = scope.theme
 
     private lateinit var lifecycleCoroutineScope: LifecycleCoroutineScope
     private lateinit var candidateLayout: UnrolledCandidateLayout
@@ -56,8 +61,17 @@ abstract class BaseUnrolledCandidateWindow :
             val intrinsicSize = max(spacing, context.dp(spacing)).toInt()
             intrinsicWidth = intrinsicSize
             intrinsicHeight = intrinsicSize
-            paint.color = ColorManager.getColor("candidate_separator_color")
+            paint.color = scope.colors.candidateSeparatorColor
         }
+    }
+
+    override fun refreshColors() {
+        if (!::candidateLayout.isInitialized) return
+        // the decorations share this drawable, so re-coloring its paint repaints the dividers
+        separatorDrawable.paint.color = scope.colors.candidateSeparatorColor
+        candidateLayout.refreshColors()
+        // visible rows re-apply their colors on rebind
+        adapter.notifyDataSetChanged()
     }
 
     abstract fun onCreateCandidateLayout(): UnrolledCandidateLayout

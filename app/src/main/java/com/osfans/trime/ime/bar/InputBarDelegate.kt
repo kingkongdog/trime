@@ -5,9 +5,9 @@
 
 package com.osfans.trime.ime.bar
 
-import android.content.Context
 import android.os.Build
 import android.util.Size
+import android.view.ContextThemeWrapper
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
@@ -26,9 +26,9 @@ import com.osfans.trime.daemon.RimeSession
 import com.osfans.trime.daemon.launchOnReady
 import com.osfans.trime.data.db.ClipboardHelper
 import com.osfans.trime.data.prefs.AppPrefs
-import com.osfans.trime.data.theme.ColorManager
 import com.osfans.trime.data.theme.KeyActionManager
 import com.osfans.trime.data.theme.Theme
+import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.ime.bar.ui.AlwaysUi
 import com.osfans.trime.ime.bar.ui.CandidateUi
 import com.osfans.trime.ime.bar.ui.TabUi
@@ -36,7 +36,6 @@ import com.osfans.trime.ime.broadcast.InputBroadcastReceiver
 import com.osfans.trime.ime.candidates.compact.CompactCandidateDelegate
 import com.osfans.trime.ime.candidates.unrolled.window.FlexboxUnrolledCandidateWindow
 import com.osfans.trime.ime.core.TrimeInputMethodService
-import com.osfans.trime.ime.dependency.InputDependencyManager
 import com.osfans.trime.ime.keyboard.CommonKeyboardActionListener
 import com.osfans.trime.ime.keyboard.KeyBehavior
 import com.osfans.trime.ime.keyboard.KeyboardWindow
@@ -51,6 +50,8 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.kodein.di.DI
+import org.kodein.di.DIAware
 import org.kodein.di.instance
 import splitties.dimensions.dp
 import splitties.views.dsl.core.add
@@ -59,15 +60,17 @@ import splitties.views.dsl.core.matchParent
 import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
-class InputBarDelegate : InputBroadcastReceiver {
-    private val di = InputDependencyManager.getInstance().di
-    private val context: Context by di.instance()
-    private val service: TrimeInputMethodService by di.instance()
-    private val theme: Theme by di.instance()
-    private val windowManager: BoardWindowManager by di.instance()
-    private val commonKeyboardActionListener: CommonKeyboardActionListener by di.instance()
-    private val candidate: CompactCandidateDelegate by di.instance()
-    private val rime: RimeSession by di.instance()
+class InputBarDelegate(override val di: DI) :
+    DIAware,
+    InputBroadcastReceiver {
+    private val context: ContextThemeWrapper by instance()
+    private val service: TrimeInputMethodService by instance()
+    private val scope: ThemeScope by instance()
+    private val theme: Theme get() = scope.theme
+    private val windowManager: BoardWindowManager by instance()
+    private val commonKeyboardActionListener: CommonKeyboardActionListener by instance()
+    private val candidate: CompactCandidateDelegate by instance()
+    private val rime: RimeSession by instance()
 
     val themedHeight = theme.generalStyle.run { candidateViewHeight + commentHeight }
 
@@ -129,11 +132,11 @@ class InputBarDelegate : InputBroadcastReceiver {
     }
 
     private val alwaysUi: AlwaysUi by lazy {
-        AlwaysUi(context, theme) { action ->
+        AlwaysUi(context, scope) { action ->
             if (action.isNotEmpty()) {
                 commonKeyboardActionListener.listener.onAction(KeyActionManager.getAction(action))
             } else {
-                windowManager.attachWindow(SwitchOptionWindow())
+                windowManager.attachWindow(SwitchOptionWindow(di))
             }
         }.apply {
             hideKeyboardButton.apply {
@@ -167,7 +170,7 @@ class InputBarDelegate : InputBroadcastReceiver {
     }
 
     private val candidateUi by lazy {
-        CandidateUi(context, candidate.view).apply {
+        CandidateUi(context, scope, candidate.view).apply {
             unrollButton.apply {
                 onSwipe = swipeDownHideKeyboardCallback
             }
@@ -175,7 +178,7 @@ class InputBarDelegate : InputBroadcastReceiver {
     }
 
     private val tabUi by lazy {
-        TabUi(context, theme)
+        TabUi(context, scope)
     }
 
     private val barStateMachine =
@@ -202,7 +205,7 @@ class InputBarDelegate : InputBroadcastReceiver {
 
     private fun setUnrollButtonToAttach() {
         candidateUi.unrollButton.setOnClickListener {
-            windowManager.attachWindow(FlexboxUnrolledCandidateWindow())
+            windowManager.attachWindow(FlexboxUnrolledCandidateWindow(di))
         }
         candidateUi.unrollButton.setIcon(R.drawable.ic_baseline_expand_more_24)
     }
@@ -246,7 +249,7 @@ class InputBarDelegate : InputBroadcastReceiver {
                     View.VISIBLE
                 }
             background =
-                ColorManager.getDecorDrawable(
+                scope.decorDrawable(
                     "candidate_background",
                     "candidate_border_color",
                     dp(theme.generalStyle.candidateBorder),
@@ -260,6 +263,22 @@ class InputBarDelegate : InputBroadcastReceiver {
             ClipboardHelper.addOnUpdateListener(onClipboardUpdateListener)
             syncToolbarOptionStates()
         }
+    }
+
+    /** Restyles the bar after a scheme switch without rebuilding its views. */
+    fun refreshColors() {
+        view.background =
+            scope.decorDrawable(
+                "candidate_background",
+                "candidate_border_color",
+                context.dp(theme.generalStyle.candidateBorder),
+                context.dp(theme.generalStyle.candidateBorderRound),
+            )
+        alwaysUi.refreshColors()
+        candidateUi.refreshColors()
+        // the compact candidate rows live inside candidateUi and re-bind via the delegate
+        candidate.refreshColors()
+        tabUi.refreshColors()
     }
 
     override fun onStartInput(info: EditorInfo) {

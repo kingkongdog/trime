@@ -16,17 +16,18 @@ import com.osfans.trime.ime.candidates.unrolled.PagingCandidateViewAdapter
 import com.osfans.trime.ime.candidates.unrolled.UnrolledCandidateLayout
 import com.osfans.trime.ime.candidates.unrolled.decoration.FlexboxHorizontalDecoration
 import com.osfans.trime.ime.window.BoardWindow
+import org.kodein.di.DI
 import splitties.dimensions.dp
 import splitties.views.dsl.core.wrapContent
 import splitties.views.setPaddingDp
 
-class FlexboxUnrolledCandidateWindow : BaseUnrolledCandidateWindow() {
+class FlexboxUnrolledCandidateWindow(di: DI) : BaseUnrolledCandidateWindow(di) {
     override fun exitAnimation(nextWindow: BoardWindow): Transition = Slide().apply {
         slideEdge = Gravity.TOP
     }
 
     override val adapter by lazy {
-        object : PagingCandidateViewAdapter(theme) {
+        object : PagingCandidateViewAdapter(scope) {
             override fun onCreateViewHolder(
                 parent: ViewGroup,
                 viewType: Int,
@@ -59,7 +60,7 @@ class FlexboxUnrolledCandidateWindow : BaseUnrolledCandidateWindow() {
         }
     }
 
-    override fun onCreateCandidateLayout(): UnrolledCandidateLayout = UnrolledCandidateLayout(context, theme).apply {
+    override fun onCreateCandidateLayout(): UnrolledCandidateLayout = UnrolledCandidateLayout(context, scope).apply {
         recyclerView.apply {
             adapter = this@FlexboxUnrolledCandidateWindow.adapter
             layoutManager = this@FlexboxUnrolledCandidateWindow.layoutManager

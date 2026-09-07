@@ -6,8 +6,8 @@
 package com.osfans.trime.ime.keyboard
 
 import android.app.Dialog
-import android.content.Context
 import android.content.Intent
+import android.view.ContextThemeWrapper
 import android.view.KeyEvent
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
@@ -20,13 +20,12 @@ import com.osfans.trime.daemon.launchOnReady
 import com.osfans.trime.data.prefs.AppPrefs
 import com.osfans.trime.data.theme.ColorManager
 import com.osfans.trime.data.theme.KeyActionManager
+import com.osfans.trime.data.theme.LiquidData
 import com.osfans.trime.data.theme.ThemeManager
 import com.osfans.trime.ime.clipboard.ClipboardWindow
 import com.osfans.trime.ime.core.TrimeInputMethodService
-import com.osfans.trime.ime.dependency.InputDependencyManager
 import com.osfans.trime.ime.dialog.EnabledSchemaPickerDialog
 import com.osfans.trime.ime.switches.SwitchOptionWindow
-import com.osfans.trime.ime.symbol.LiquidData
 import com.osfans.trime.ime.symbol.LiquidWindow
 import com.osfans.trime.ime.window.BoardWindowManager
 import com.osfans.trime.ui.main.settings.ColorPickerDialog
@@ -40,20 +39,21 @@ import com.osfans.trime.util.customFormatDateTime
 import com.osfans.trime.util.isAsciiPrintable
 import com.osfans.trime.util.toast
 import kotlinx.coroutines.launch
+import org.kodein.di.DI
+import org.kodein.di.DIAware
 import org.kodein.di.instance
 import splitties.systemservices.clipboardManager
 import splitties.systemservices.inputMethodManager
 import timber.log.Timber
 
-class CommonKeyboardActionListener {
-    private val di = InputDependencyManager.getInstance().di
+class CommonKeyboardActionListener(override val di: DI) : DIAware {
 
-    private val context: Context by di.instance()
-    private val service: TrimeInputMethodService by di.instance()
-    private val rime: RimeSession by di.instance()
-    private val windowManager: BoardWindowManager by di.instance()
-    private val keyboardWindow: KeyboardWindow by di.instance()
-    private val liquidWindow: LiquidWindow by di.instance()
+    private val context: ContextThemeWrapper by instance()
+    private val service: TrimeInputMethodService by instance()
+    private val rime: RimeSession by instance()
+    private val windowManager: BoardWindowManager by instance()
+    private val keyboardWindow: KeyboardWindow by instance()
+    private val liquidWindow: LiquidWindow by instance()
 
     private val prefs = AppPrefs.defaultInstance()
 
@@ -118,7 +118,7 @@ class CommonKeyboardActionListener {
             }
 
             override fun onAction(action: KeyAction) {
-                val text = action.getText(KeyboardSwitcher.currentKeyboard)
+                val text = action.getText(KeyboardWindow.currentKeyboard)
                 val shouldHandle = when {
                     action.commit.isNotEmpty() -> {
                         service.commitText(action.commit)
@@ -177,7 +177,7 @@ class CommonKeyboardActionListener {
 
                 when (action.command) {
                     "liquid_keyboard" -> handleLiquidKeyboard(arg)
-                    "menu_keyboard" -> windowManager.attachWindow(SwitchOptionWindow())
+                    "menu_keyboard" -> windowManager.attachWindow(SwitchOptionWindow(di))
                     "clipboard_window" -> handleClipboardWindow(arg)
                     "set_color_scheme" -> handleColorScheme(arg)
                     "set_theme" -> handleTheme(arg)
@@ -198,7 +198,7 @@ class CommonKeyboardActionListener {
             private fun handleLiquidKeyboard(arg: String) {
                 // for compatibility
                 if (arg == "剪贴" || arg == "clipboard") {
-                    windowManager.attachWindow(ClipboardWindow())
+                    windowManager.attachWindow(ClipboardWindow(di))
                     return
                 }
                 val liquidTagList = LiquidData.getTagList()
@@ -218,7 +218,7 @@ class CommonKeyboardActionListener {
 
             private fun handleClipboardWindow(arg: String) {
                 val tabIndex = arg.toIntOrNull()?.coerceIn(0, 1) ?: 0
-                windowManager.attachWindow(ClipboardWindow(tabIndex))
+                windowManager.attachWindow(ClipboardWindow(di, tabIndex))
             }
 
             private fun handleColorScheme(arg: String) {
@@ -230,12 +230,13 @@ class CommonKeyboardActionListener {
             private fun handleTheme(arg: String) {
                 if (arg.isEmpty()) {
                     // 参数为空时，刷新当前主题
-                    ThemeManager.selectTheme(ThemeManager.prefs.selectedTheme.getValue())
+                    val themeId = ThemeManager.prefs.selectedTheme.getValue()
+                    service.lifecycleScope.launch { ThemeManager.selectTheme(themeId) }
                 } else {
                     // 通过主题名称查找对应的配置ID并切换主题
                     ThemeManager.getAllThemes()
-                        .find { it.name.equals(arg, ignoreCase = true) }?.let {
-                            ThemeManager.selectTheme(it.configId)
+                        .find { it.name.equals(arg, ignoreCase = true) }?.let { item ->
+                            service.lifecycleScope.launch { ThemeManager.selectTheme(item.configId) }
                         }
                 }
             }
@@ -388,15 +389,15 @@ class CommonKeyboardActionListener {
                     else -> false
                 }
 
-                if (action.modifier == 0 && KeyboardSwitcher.currentKeyboard.isOnlyShiftOn && shouldHookShiftKey) {
+                if (action.modifier == 0 && KeyboardWindow.currentKeyboard.isOnlyShiftOn && shouldHookShiftKey) {
                     onKey(action.code, 0)
                     return
                 }
 
                 val modifier = when {
-                    action.modifier == 0 -> KeyboardSwitcher.currentKeyboard.modifier
+                    action.modifier == 0 -> KeyboardWindow.currentKeyboard.modifier
                     (action.modifier and KeyEvent.META_CTRL_ON) != 0 && isNavigationKey(action.code) ->
-                        action.modifier or KeyboardSwitcher.currentKeyboard.modifier
+                        action.modifier or KeyboardWindow.currentKeyboard.modifier
                     else -> action.modifier
                 }
 

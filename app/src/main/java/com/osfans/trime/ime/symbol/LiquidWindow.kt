@@ -13,7 +13,8 @@ import com.google.android.flexbox.FlexboxLayoutManager
 import com.osfans.trime.daemon.RimeSession
 import com.osfans.trime.daemon.launchOnReady
 import com.osfans.trime.data.SymbolHistory
-import com.osfans.trime.data.theme.Theme
+import com.osfans.trime.data.theme.LiquidData
+import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.data.theme.model.LiquidKeyboard
 import com.osfans.trime.ime.core.TrimeInputMethodService
 import com.osfans.trime.ime.keyboard.CommonKeyboardActionListener
@@ -21,18 +22,19 @@ import com.osfans.trime.ime.keyboard.KeyboardWindow
 import com.osfans.trime.ime.window.BoardWindow
 import com.osfans.trime.ime.window.BoardWindowManager
 import com.osfans.trime.ime.window.ResidentWindow
+import org.kodein.di.DI
 import org.kodein.di.instance
 
-class LiquidWindow :
-    BoardWindow.BarBoardWindow(),
+class LiquidWindow(di: DI) :
+    BoardWindow.BarBoardWindow(di),
     ResidentWindow {
     override val showTitle = false
 
-    private val service: TrimeInputMethodService by di.instance()
-    private val rime: RimeSession by di.instance()
-    private val theme: Theme by di.instance()
-    private val windowManager: BoardWindowManager by di.instance()
-    private val commonKeyboardActionListener: CommonKeyboardActionListener by di.instance()
+    private val service: TrimeInputMethodService by instance()
+    private val rime: RimeSession by instance()
+    private val scope: ThemeScope by instance()
+    private val windowManager: BoardWindowManager by instance()
+    private val commonKeyboardActionListener: CommonKeyboardActionListener by instance()
 
     private lateinit var liquidLayout: LiquidLayout
     private val symbolHistory = SymbolHistory(180)
@@ -40,7 +42,7 @@ class LiquidWindow :
         private set
 
     private val adapter by lazy {
-        LiquidAdapter(theme) {
+        LiquidAdapter(scope) {
             when (currentDataType) {
                 LiquidData.Type.SYMBOL -> triggerSymbolInput(this.altText)
                 LiquidData.Type.TABS -> {
@@ -71,7 +73,7 @@ class LiquidWindow :
     override val key: ResidentWindow.Key
         get() = LiquidWindow
 
-    override fun onCreateView(): View = LiquidLayout(context, theme, commonKeyboardActionListener).apply {
+    override fun onCreateView(): View = LiquidLayout(context, scope, commonKeyboardActionListener).apply {
         liquidLayout = this
         tabsUi.apply {
             setTags(LiquidData.getTagList())
@@ -90,6 +92,10 @@ class LiquidWindow :
     override fun onAttached() {}
 
     override fun onDetached() {}
+
+    override fun refreshColors() {
+        if (::liquidLayout.isInitialized) liquidLayout.refreshColors()
+    }
 
     fun setDataByIndex(i: Int) {
         val tag = LiquidData.getTagList()[i]

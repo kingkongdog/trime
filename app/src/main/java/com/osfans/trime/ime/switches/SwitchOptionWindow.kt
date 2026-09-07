@@ -18,6 +18,7 @@ import com.osfans.trime.core.SchemaItem
 import com.osfans.trime.daemon.RimeSession
 import com.osfans.trime.daemon.launchOnReady
 import com.osfans.trime.data.theme.Theme
+import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.ime.bar.ui.ToolButton
 import com.osfans.trime.ime.broadcast.InputBroadcastReceiver
 import com.osfans.trime.ime.core.TrimeInputMethodService
@@ -26,6 +27,7 @@ import com.osfans.trime.ime.window.BoardWindow
 import com.osfans.trime.ui.main.settings.ThemePickerDialog
 import com.osfans.trime.util.AppUtils
 import kotlinx.coroutines.launch
+import org.kodein.di.DI
 import org.kodein.di.instance
 import splitties.dimensions.dp
 import splitties.views.dsl.constraintlayout.constraintLayout
@@ -35,12 +37,13 @@ import splitties.views.dsl.core.add
 import splitties.views.dsl.recyclerview.recyclerView
 import splitties.views.recyclerview.gridLayoutManager
 
-class SwitchOptionWindow :
-    BoardWindow.BarBoardWindow(),
+class SwitchOptionWindow(di: DI) :
+    BoardWindow.BarBoardWindow(di),
     InputBroadcastReceiver {
-    private val service: TrimeInputMethodService by di.instance()
-    private val rime: RimeSession by di.instance()
-    private val theme: Theme by di.instance()
+    private val service: TrimeInputMethodService by instance()
+    private val rime: RimeSession by instance()
+    private val scope: ThemeScope by instance()
+    private val theme: Theme get() = scope.theme
 
     private val staticEntries by lazy {
         arrayOf(
@@ -94,7 +97,7 @@ class SwitchOptionWindow :
 
     private val adapter: SwitchOptionAdapter by lazy {
         object : SwitchOptionAdapter() {
-            override val theme: Theme = this@SwitchOptionWindow.theme
+            override val scope: ThemeScope = this@SwitchOptionWindow.scope
 
             override fun onItemClick(
                 view: View,
@@ -179,10 +182,21 @@ class SwitchOptionWindow :
         updateSchemaOptionEntries()
     }
 
-    override fun onCreateView() = view
+    private var viewCreated = false
+
+    override fun onCreateView(): View {
+        viewCreated = true
+        return view
+    }
+
+    override fun refreshColors() {
+        if (!viewCreated) return
+        (view.adapter as? SwitchOptionAdapter)?.refreshColors()
+        settingsButton.refreshColors()
+    }
 
     private val settingsButton by lazy {
-        ToolButton(context, R.drawable.ic_baseline_settings_24).apply {
+        ToolButton(context, R.drawable.ic_baseline_settings_24, scope).apply {
             setOnClickListener { AppUtils.launchMainActivity(context) }
         }
     }

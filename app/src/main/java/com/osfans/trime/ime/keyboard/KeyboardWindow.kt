@@ -32,6 +32,7 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.runBlocking
+import org.kodein.di.DI
 import org.kodein.di.instance
 import splitties.dimensions.dp
 import splitties.systemservices.windowManager
@@ -41,16 +42,16 @@ import splitties.views.dsl.core.lParams
 import splitties.views.dsl.core.matchParent
 import timber.log.Timber
 
-class KeyboardWindow :
-    BoardWindow.NoBarBoardWindow(),
+class KeyboardWindow(di: DI) :
+    BoardWindow.NoBarBoardWindow(di),
     ResidentWindow,
     InputBroadcastReceiver {
-    private val service: TrimeInputMethodService by di.instance()
-    private val theme: Theme by di.instance()
-    private val rime: RimeSession by di.instance()
-    private val commonKeyboardActionListener: CommonKeyboardActionListener by di.instance()
-    private val popup: PopupDelegate by di.instance()
-    private val enterKeyDisplay: EnterKeyDisplayDelegate by di.instance()
+    private val service: TrimeInputMethodService by instance()
+    private val theme: Theme by instance()
+    private val rime: RimeSession by instance()
+    private val commonKeyboardActionListener: CommonKeyboardActionListener by instance()
+    private val popup: PopupDelegate by instance()
+    private val enterKeyDisplay: EnterKeyDisplayDelegate by instance()
 
     private val cursorCapsMode: Int
         get() =
@@ -72,7 +73,9 @@ class KeyboardWindow :
 
     private lateinit var keyboardView: FrameLayout
 
-    companion object : ResidentWindow.Key
+    companion object : ResidentWindow.Key {
+        lateinit var currentKeyboard: Keyboard
+    }
 
     override val key: ResidentWindow.Key
         get() = KeyboardWindow
@@ -83,7 +86,7 @@ class KeyboardWindow :
     private var lastLockKeyboardId = ""
     private var tempAsciiMode: Boolean? = null
     private val cachedKeyboards = mutableMapOf<String, Pair<Keyboard, KeyboardView>>()
-    private val currentKeyboard: Keyboard? get() = cachedKeyboards[currentKeyboardId]?.first
+    private val activeKeyboard: Keyboard? get() = cachedKeyboards[currentKeyboardId]?.first
     private val currentKeyboardView: KeyboardView? get() = cachedKeyboards[currentKeyboardId]?.second
 
     private val keyboardActionListener = commonKeyboardActionListener.listener
@@ -116,7 +119,7 @@ class KeyboardWindow :
             it.onDetach()
             keyboardView.removeView(it)
         }
-        currentKeyboard?.lastAsciiMode = rime.run { statusCached }.isAsciiMode
+        activeKeyboard?.lastAsciiMode = rime.run { statusCached }.isAsciiMode
     }
 
     /** 计算键盘可用宽度：优先使用已测量的容器宽度，否则回退到系统窗口测量。 */
@@ -166,10 +169,10 @@ class KeyboardWindow :
         lastKeyboardId = target
 
         val config = selectKeyboardConfig(target)
-        val keyboard = currentKeyboard ?: Keyboard(context, theme, computeAllowedWidth(), config)
+        val keyboard = activeKeyboard ?: Keyboard(context, theme, computeAllowedWidth(), config)
         val view = currentKeyboardView ?: KeyboardView(context, theme, keyboard, popup, service, keyboardActionListener, enterKeyDisplay)
 
-        if (currentKeyboard == null) {
+        if (activeKeyboard == null) {
             cachedKeyboards[target] = keyboard to view
             keyboard.lastAsciiMode = keyboard.asciiMode
         }
@@ -189,8 +192,7 @@ class KeyboardWindow :
                 }
             }
 
-            // TODO：为避免过量重构，这里暂时将 currentKeyboard 同步到 KeyboardSwitcher
-            KeyboardSwitcher.currentKeyboard = it
+            currentKeyboard = it
         }
 
         view.let {
@@ -228,7 +230,7 @@ class KeyboardWindow :
                 ".last" -> lastKeyboardId
                 ".last_lock" -> lastLockKeyboardId
                 ".ascii" -> {
-                    var ascii = currentKeyboard?.asciiKeyboard
+                    var ascii = activeKeyboard?.asciiKeyboard
                     if (ascii.isNullOrEmpty()) {
                         ascii = lastLockKeyboardId
                     }
@@ -236,7 +238,7 @@ class KeyboardWindow :
                 }
                 else -> {
                     id.ifEmpty {
-                        if (currentKeyboard?.isLock == true) currentKeyboardId else lastLockKeyboardId
+                        if (activeKeyboard?.isLock == true) currentKeyboardId else lastLockKeyboardId
                     }
                 }
             }
@@ -272,6 +274,11 @@ class KeyboardWindow :
             cachedKeyboards.remove(id)
         }
         attachKeyboard(id)
+    }
+
+    /** Repaints the keyboard after a color-scheme switch; keys re-resolve their colors. */
+    override fun refreshColors() {
+        currentKeyboardView?.invalidateAllKeys()
     }
 
     override fun onStartInput(info: EditorInfo) {
@@ -314,7 +321,7 @@ class KeyboardWindow :
                     service.postRimeJob { setRuntimeOption("ascii_mode", saved) }
                 }
                 tempAsciiMode = null
-            } ?: currentKeyboard?.let {
+            } ?: activeKeyboard?.let {
                 if (theme.generalStyle.resetAsciiModeOnFocusChange) {
                     val targetMode = if (it.resetAsciiMode) it.asciiMode else it.lastAsciiMode
                     if (isAsciiMode != targetMode) {
@@ -335,7 +342,7 @@ class KeyboardWindow :
 
     override fun onKeyAppearanceUpdate(composing: Boolean, menu: Boolean, paging: Boolean) {
         if (!rime.run { statusCached }.isAsciiMode) {
-            currentKeyboard?.appearanceStateKeys?.forEach { key ->
+            activeKeyboard?.appearanceStateKeys?.forEach { key ->
                 currentKeyboardView?.invalidateKeyByIndex(key.index)
             }
         }
@@ -346,7 +353,7 @@ class KeyboardWindow :
         end: Int,
     ) {
         dispatchCapsState { on, shifted ->
-            currentKeyboard?.setShifted(on, shifted)?.let { if (it) currentKeyboardView?.invalidateAllKeys() }
+            activeKeyboard?.setShifted(on, shifted)?.let { if (it) currentKeyboardView?.invalidateAllKeys() }
         }
     }
 

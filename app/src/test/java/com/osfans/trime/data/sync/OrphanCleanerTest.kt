@@ -7,11 +7,12 @@ package com.osfans.trime.data.sync
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.io.File
+import kotlin.io.path.createTempDirectory
 
 class OrphanCleanerTest :
     StringSpec({
         "preserves installation.yaml even when missing from external listing" {
-            val root = createTempDir()
+            val root = createTempDirectory().toFile()
             try {
                 val installation = File(root, "installation.yaml")
                 installation.writeText("installation_id: test")
@@ -24,6 +25,28 @@ class OrphanCleanerTest :
                     )
 
                 installation.exists() shouldBe true
+                File(root, "orphan.yaml").exists() shouldBe false
+                result.deleted shouldBe 1
+            } finally {
+                root.deleteRecursively()
+            }
+        }
+        "preserves own sync dumps even when missing from external listing" {
+            val root = createTempDirectory().toFile()
+            try {
+                val ownDump = File(root, "sync/phone-a/luna.userdb.txt")
+                ownDump.parentFile?.mkdirs()
+                ownDump.writeText("dump")
+                File(root, "orphan.yaml").writeText("orphan")
+
+                val result =
+                    OrphanCleaner.removeLocalOrphans(
+                        root,
+                        externalPaths = emptySet(),
+                        ownId = "phone-a",
+                    )
+
+                ownDump.exists() shouldBe true
                 File(root, "orphan.yaml").exists() shouldBe false
                 result.deleted shouldBe 1
             } finally {

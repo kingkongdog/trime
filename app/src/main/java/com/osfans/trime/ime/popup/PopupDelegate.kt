@@ -4,17 +4,19 @@
  */
 package com.osfans.trime.ime.popup
 
-import android.content.Context
 import android.graphics.Rect
+import android.view.ContextThemeWrapper
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.lifecycleScope
 import com.osfans.trime.data.theme.Theme
+import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.ime.core.TrimeInputMethodService
-import com.osfans.trime.ime.dependency.InputDependencyManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.kodein.di.DI
+import org.kodein.di.DIAware
 import org.kodein.di.instance
 import splitties.dimensions.dp
 import splitties.views.dsl.core.add
@@ -22,10 +24,11 @@ import splitties.views.dsl.core.frameLayout
 import splitties.views.dsl.core.lParams
 import java.util.LinkedList
 
-class PopupDelegate {
-    private val context: Context by InputDependencyManager.getInstance().di.instance()
-    private val theme: Theme by InputDependencyManager.getInstance().di.instance()
-    private val service: TrimeInputMethodService by InputDependencyManager.getInstance().di.instance()
+class PopupDelegate(override val di: DI) : DIAware {
+    private val context: ContextThemeWrapper by instance()
+    private val scope: ThemeScope by instance()
+    private val theme: Theme get() = scope.theme
+    private val service: TrimeInputMethodService by instance()
 
     private val showingEntryUi = HashMap<Int, PopupEntryUi>()
     private val dismissJobs = HashMap<Int, Job>()
@@ -80,7 +83,7 @@ class PopupDelegate {
         }
         val popup = (
             freeEntryUi.poll()
-                ?: PopupEntryUi(context, theme, popupKeyHeight, popupRadius)
+                ?: PopupEntryUi(context, scope, popupKeyHeight, popupRadius)
             ).apply {
             lastShowTime = System.currentTimeMillis()
             setText(content)
@@ -119,7 +122,7 @@ class PopupDelegate {
         val labels = keys
         val keyboardUi = PopupKeyboardUi(
             context,
-            theme,
+            scope,
             rootBounds,
             bounds,
             { dismissPopup(viewId) },

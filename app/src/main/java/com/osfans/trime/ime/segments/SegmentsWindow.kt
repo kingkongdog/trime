@@ -18,6 +18,7 @@ import com.google.android.flexbox.FlexboxLayoutManager
 import com.osfans.trime.R
 import com.osfans.trime.data.db.CollectionHelper
 import com.osfans.trime.data.theme.Theme
+import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.ime.core.TrimeInputMethodService
 import com.osfans.trime.ime.keyboard.KeyboardWindow
 import com.osfans.trime.ime.window.BoardWindow
@@ -25,21 +26,23 @@ import com.osfans.trime.ime.window.BoardWindowManager
 import com.osfans.trime.util.NativeTokenizer
 import com.osfans.trime.util.toast
 import kotlinx.coroutines.launch
+import org.kodein.di.DI
 import org.kodein.di.instance
 import splitties.dimensions.dp
 import splitties.systemservices.clipboardManager
 
-class SegmentsWindow(private val source: String) : BoardWindow.BarBoardWindow() {
-    private val service: TrimeInputMethodService by di.instance()
-    private val theme: Theme by di.instance()
-    private val windowManager: BoardWindowManager by di.instance()
+class SegmentsWindow(di: DI, private val source: String) : BoardWindow.BarBoardWindow(di) {
+    private val service: TrimeInputMethodService by instance()
+    private val scope: ThemeScope by instance()
+    private val theme: Theme get() = scope.theme
+    private val windowManager: BoardWindowManager by instance()
 
     override val title: String by lazy {
         context.getString(R.string.word_segment)
     }
 
     private val adapter by lazy {
-        SegmentsAdapter(theme, { onSelectionChanged() }, source)
+        SegmentsAdapter(scope, { onSelectionChanged() }, source)
     }
 
     private val touchListener by lazy {
@@ -49,7 +52,7 @@ class SegmentsWindow(private val source: String) : BoardWindow.BarBoardWindow() 
     }
 
     private val ui by lazy {
-        SegmentsUi(context).apply {
+        SegmentsUi(context, scope).apply {
             recyclerView.apply {
                 layoutManager = FlexboxLayoutManager(context).apply {
                     flexDirection = FlexDirection.ROW
@@ -145,7 +148,18 @@ class SegmentsWindow(private val source: String) : BoardWindow.BarBoardWindow() 
         ui.updateButtons(hasSelection)
     }
 
-    override fun onCreateView() = ui.root
+    private var viewCreated = false
+
+    override fun onCreateView(): View {
+        viewCreated = true
+        return ui.root
+    }
+
+    override fun refreshColors() {
+        if (!viewCreated) return
+        ui.refreshColors()
+        (ui.recyclerView.adapter as? SegmentsAdapter)?.notifyDataSetChanged()
+    }
 
     override fun onAttached() {
         val segments = NativeTokenizer.tokenize(source)
