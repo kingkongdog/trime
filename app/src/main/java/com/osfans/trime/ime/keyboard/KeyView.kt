@@ -19,6 +19,7 @@ import com.mikepenz.iconics.utils.sizeDp
 import com.osfans.trime.daemon.RimeDaemon
 import com.osfans.trime.data.prefs.AppPrefs
 import com.osfans.trime.data.theme.FontManager
+import com.osfans.trime.data.theme.KeyActionManager
 import com.osfans.trime.ime.core.TrimeInputMethodService
 import com.osfans.trime.ime.popup.PopupAction
 import com.osfans.trime.ime.popup.PopupDelegate
@@ -97,7 +98,7 @@ class KeyView(
                     val triggerAction = PopupAction.TriggerAction(id)
                     popup.listener.onPopupAction(triggerAction)
                     triggerAction.outAction?.let { action ->
-                        keyboardActionListener.onAction(KeyAction(action))
+                        keyboardActionListener.onAction(KeyActionManager.getAction(action))
                         dismissPopupPreview()
                     }
                     setPressedState(false)
@@ -132,8 +133,8 @@ class KeyView(
         onSlide = { delta, _, _ ->
             if (isSlideCursor) {
                 when {
-                    delta > 0 -> keyboardActionListener.onAction(KeyAction("Right"))
-                    delta < 0 -> keyboardActionListener.onAction(KeyAction("Left"))
+                    delta > 0 -> keyboardActionListener.onAction(KeyActionManager.getAction("Right"))
+                    delta < 0 -> keyboardActionListener.onAction(KeyActionManager.getAction("Left"))
                 }
             } else if (isSlideDelete) {
                 val ic = service.currentInputConnection
@@ -295,8 +296,8 @@ class KeyView(
         val bg = k.getBackgroundDrawable() ?: return
 
         if (bg is GradientDrawable) {
-            (k.roundCorner ?: keyboard.roundCorner).takeIf { it > 0f }?.let { bg.cornerRadius = dp(it) }
-            (k.keyBorder ?: keyboard.keyBorder).takeIf { it > 0 }?.let { bg.setStroke(dp(it), k.getBorderColor()) }
+            k.roundCorner.takeIf { it > 0f }?.let { bg.cornerRadius = dp(it) }
+            k.keyBorder.takeIf { it > 0 }?.let { bg.setStroke(dp(it), k.getBorderColor()) }
         }
 
         bg.setBounds(
