@@ -69,6 +69,7 @@ class PagedCandidatesUi(
                 viewType: Int,
             ): UiHolder = when (viewType) {
                 0 -> UiHolder.Candidate(LabeledCandidateItemUi(ctx, scope))
+
                 else -> UiHolder.Pagination(PaginationUi(ctx, scope)).apply {
                     ui.prevIcon.setOnClickListener {
                         onPrevPage.invoke()
@@ -102,6 +103,7 @@ class PagedCandidatesUi(
                         //     width = if (isHorizontal) WRAP_CONTENT else MATCH_PARENT
                         // }
                     }
+
                     is UiHolder.Pagination -> {
                         holder.ui.update(candidates)
                         holder.ui.root.updateLayoutParams<FlexboxLayoutManager.LayoutParams> {
@@ -140,9 +142,12 @@ class PagedCandidatesUi(
         candidatesLayoutManager.apply {
             flexDirection = when (layout) {
                 PopupCandidatesLayout.HORIZONTAL -> FlexDirection.ROW
+
                 PopupCandidatesLayout.VERTICAL_REVERSE -> FlexDirection.COLUMN_REVERSE
+
                 PopupCandidatesLayout.AUTOMATIC ->
                     if (isHorizontal) FlexDirection.ROW else FlexDirection.COLUMN
+
                 else -> FlexDirection.COLUMN
             }
             alignItems = if (isHorizontal) AlignItems.BASELINE else AlignItems.STRETCH

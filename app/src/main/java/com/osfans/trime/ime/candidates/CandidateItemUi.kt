@@ -154,6 +154,7 @@ class CandidateItemUi(
                 //     },
                 // )
             }
+
             GeneralStyle.CommentPosition.TOP -> {
                 // add(
                 //     comment,
@@ -173,6 +174,7 @@ class CandidateItemUi(
                     },
                 )
             }
+
             GeneralStyle.CommentPosition.OVERLAY -> {
                 add(
                     text,
@@ -196,6 +198,9 @@ class CandidateItemUi(
         }
     }
 
+    /**
+     * candidate long press feedback is handled by `showCandidateActionMenu`
+     */
     override val root = view(::GestureFrame) {
         /**
          * candidate long press feedback is handled by `showCandidateActionMenu`

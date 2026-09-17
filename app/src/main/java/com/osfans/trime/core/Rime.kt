@@ -114,9 +114,11 @@ class Rime :
             if (message is RimeMessage.DeployMessage) {
                 when (message.data) {
                     RimeMessage.DeployMessage.State.Start -> Unit
+
                     RimeMessage.DeployMessage.State.Success -> {
                         deployFinished.complete(true)
                     }
+
                     RimeMessage.DeployMessage.State.Failure -> {
                         deployFinished.complete(false)
                     }
@@ -374,6 +376,7 @@ class Rime :
                 statusCached = getRimeStatus()
                 schemaCached = RimeSchema(it.data.id)
             }
+
             is RimeMessage.OptionMessage -> {
                 // Option change won't trigger response update
                 val status = getRimeStatus()
@@ -383,27 +386,33 @@ class Rime :
                     showAsciiSwitchTips(status)
                 }
             }
+
             is RimeMessage.DeployMessage -> {
                 if (it.data == RimeMessage.DeployMessage.State.Start) {
                     OpenCCDictManager.buildOpenCCDict()
                 }
             }
+
             is RimeMessage.CompositionMessage -> {
                 val composition = it.data
                 compositionCached = composition
             }
+
             is RimeMessage.PagedCandidatesMessage -> {
                 val paged = it.data
                 paging = paged.hasPrevPage
                 hasMenu = paged.candidates.isNotEmpty()
             }
+
             is RimeMessage.BulkCandidatesMessage -> {
                 hasMenu = it.data.candidates.isNotEmpty()
             }
+
             is RimeMessage.StatusMessage -> {
                 statusCached = it.data
                 updateSchemaCached(it.data)
             }
+
             else -> {}
         }
     }
