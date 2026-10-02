@@ -6,12 +6,14 @@
 
 package com.osfans.trime.data.theme
 
-import com.osfans.trime.data.theme.model.ColorScheme
+import com.charleskorn.kaml.YamlMap
 import com.osfans.trime.data.theme.model.GeneralStyle
+import com.osfans.trime.data.theme.model.PresetKey
+import com.osfans.trime.ime.keyboard.KeyCode
 import com.osfans.trime.util.ColorUtils
-import com.osfans.trime.util.yaml.Node
-import com.osfans.trime.util.yaml.mapping
-import com.osfans.trime.util.yaml.string
+import com.osfans.trime.util.mapping
+import com.osfans.trime.util.pairs
+import com.osfans.trime.util.string
 import timber.log.Timber
 
 /**
@@ -20,7 +22,7 @@ import timber.log.Timber
  * values it cannot resolve, and which references point at nothing.
  *
  * The checks reuse the validators of the runtime itself — the color tables
- * ([ColorTable]) and the preset checks ([KeyActionManager.presetDiagnostics]) —
+ * ([ColorTable]) and the preset checks ([presetDiagnostics]) —
  * so the linter cannot disagree with what the keyboard actually does. A finding
  * can therefore depend on the platform: a preset send is checked against the key
  * names the runtime resolves, and part of them only exist on a device.
@@ -75,7 +77,7 @@ object ThemeDiagnostics {
      */
     fun lint(
         theme: Theme,
-        node: Node.Mapping,
+        node: YamlMap,
         parseColor: (String) -> Int? = ::parseColor,
     ): List<Finding> = buildList {
         lintTopLevelKeys(node)
@@ -134,14 +136,13 @@ object ThemeDiagnostics {
     }
 
     private fun MutableList<Finding>.reportUnknownKeys(
-        node: Node.Mapping?,
+        node: YamlMap?,
         known: Set<String>,
         path: String,
         code: Code,
         severity: Severity,
     ) {
-        node?.pairs?.keys?.forEach { key ->
-            val name = key.string ?: return@forEach
+        node?.pairs?.keys?.forEach { name ->
             if (name in known) return@forEach
             add(
                 Finding(
@@ -154,7 +155,7 @@ object ThemeDiagnostics {
         }
     }
 
-    private fun MutableList<Finding>.lintTopLevelKeys(node: Node.Mapping) {
+    private fun MutableList<Finding>.lintTopLevelKeys(node: YamlMap) {
         // `__include`/`__patch` are expansion directives: they never survive
         // expansion, but a theme may still carry them for the librime backend.
         reportUnknownKeys(
@@ -166,9 +167,9 @@ object ThemeDiagnostics {
         )
     }
 
-    private fun MutableList<Finding>.lintStyleKeys(node: Node.Mapping) {
+    private fun MutableList<Finding>.lintStyleKeys(node: YamlMap) {
         reportUnknownKeys(
-            node["style"]?.mapping,
+            node.pairs["style"]?.mapping,
             GeneralStyle.KNOWN_KEYS,
             path = "style",
             code = Code.UNKNOWN_STYLE_KEY,
@@ -181,8 +182,8 @@ object ThemeDiagnostics {
      * only uses it as a deploy cache key, so this is where it is checked
      * against the version this build can read.
      */
-    private fun MutableList<Finding>.lintConfigVersion(node: Node.Mapping) {
-        val raw = node["config_version"]?.string
+    private fun MutableList<Finding>.lintConfigVersion(node: YamlMap) {
+        val raw = node.pairs["config_version"]?.string
         if (raw == null) {
             add(
                 Finding(
@@ -234,7 +235,7 @@ object ThemeDiagnostics {
         theme: Theme,
         parseColor: (String) -> Int?,
     ) {
-        val schemes = theme.colorSchemes
+        val schemes = theme.presetColorSchemes
         if (schemes.isEmpty()) {
             add(
                 Finding(
@@ -246,7 +247,7 @@ object ThemeDiagnostics {
             return
         }
 
-        val ids = schemes.map(ColorScheme::id).toSet()
+        val ids = schemes.keys
         if ("default" !in ids) {
             add(
                 Finding(
@@ -259,14 +260,14 @@ object ThemeDiagnostics {
         }
         schemes.forEach { scheme ->
             listOf("light_scheme", "dark_scheme").forEach { link ->
-                val target = scheme.colors[link]
+                val target = scheme.value[link]
                 if (!target.isNullOrEmpty() && target !in ids) {
                     add(
                         Finding(
                             Severity.WARNING,
                             Code.MISSING_SCHEME_LINK,
-                            "scheme '${scheme.id}' links to missing scheme '$target' via '$link'",
-                            "preset_color_schemes/${scheme.id}/$link",
+                            "scheme '${scheme.key}' links to missing scheme '$target' via '$link'",
+                            "preset_color_schemes/${scheme.key}/$link",
                         ),
                     )
                 }
@@ -281,19 +282,19 @@ object ThemeDiagnostics {
         // file: it is reported at the key that carries it, which may be a theme
         // fallback entry rather than the key the runtime asks for. The keys
         // that inherit the value are left out, so it is reported once.
-        schemes.forEach { scheme ->
-            ColorTable.resolve(scheme, theme.fallbackColors, parseColor)
+        schemes.forEach { (id, colors) ->
+            ColorTable.resolve(colors, theme.fallbackColors, parseColor)
                 .invalidValues
                 .mapNotNull { key ->
-                    ColorTable.resolveRawSource(key.key, scheme.colors, theme.fallbackColors)
+                    ColorTable.resolveRawSource(key.key, colors, theme.fallbackColors)
                 }
                 .distinct()
                 .forEach { (source, raw) ->
-                    val definedByScheme = scheme.colors[source]?.isNotEmpty() == true
-                    val where = if (definedByScheme) "scheme '${scheme.id}'" else "fallback_colors"
+                    val definedByScheme = colors[source]?.isNotEmpty() == true
+                    val where = if (definedByScheme) "scheme '$id'" else "fallback_colors"
                     val path =
                         if (definedByScheme) {
-                            "preset_color_schemes/${scheme.id}/$source"
+                            "preset_color_schemes/$id/$source"
                         } else {
                             "fallback_colors/$source"
                         }
@@ -317,7 +318,7 @@ object ThemeDiagnostics {
      */
     private fun MutableList<Finding>.lintFallbackTargets(
         theme: Theme,
-        schemes: List<ColorScheme>,
+        schemes: Map<String, Map<String, String>>,
     ) {
         val fallbacks = theme.fallbackColors
         fallbacks.forEach { (from, target) ->
@@ -330,7 +331,7 @@ object ThemeDiagnostics {
             val resolvable =
                 ColorTable.isImageValue(target) ||
                     schemes.any { scheme ->
-                        ColorTable.resolveRaw(target, scheme.colors, fallbacks) != null
+                        ColorTable.resolveRaw(target, scheme.value, fallbacks) != null
                     }
             if (resolvable) return@forEach
             add(
@@ -344,8 +345,21 @@ object ThemeDiagnostics {
         }
     }
 
+    /**
+     * Lists presets whose send value can never resolve to a key, so that a
+     * theme is checked once at activation time instead of on first use.
+     */
+    fun presetDiagnostics(presetKeys: Map<String, PresetKey>): List<String> = presetKeys.mapNotNull { (name, preset) ->
+        val (keycode, modifiers) = KeyCode.parse(preset.send)
+        if (preset.send.isNotEmpty() && keycode == 0 && modifiers == 0) {
+            "preset '$name' has an unrecognized send '${preset.send}'"
+        } else {
+            null
+        }
+    }
+
     private fun MutableList<Finding>.lintPresetSends(theme: Theme) {
-        KeyActionManager.presetDiagnostics(theme.presetKeys).forEach { message ->
+        presetDiagnostics(theme.presetKeys).forEach { message ->
             add(
                 Finding(
                     Severity.WARNING,

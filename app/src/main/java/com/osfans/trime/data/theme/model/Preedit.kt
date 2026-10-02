@@ -5,14 +5,9 @@
 
 package com.osfans.trime.data.theme.model
 
-import android.os.Parcelable
-import com.osfans.trime.util.yaml.Node
-import com.osfans.trime.util.yaml.float
-import com.osfans.trime.util.yaml.int
-import com.osfans.trime.util.yaml.mapping
-import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.Serializable
 
-@Parcelize
+@Serializable
 data class Preedit(
     val horizontalPadding: Int = 8,
     val paddingTop: Int = 0,
@@ -21,9 +16,9 @@ data class Preedit(
     val topEndRadius: Float = 0f,
     val alpha: Float = 0.8f,
     val foreground: Foreground = Foreground(),
-) : Parcelable {
+) {
 
-    @Parcelize
+    @Serializable
     data class Foreground(
         val fontSize: Float = 16f,
     ) : Parcelable {

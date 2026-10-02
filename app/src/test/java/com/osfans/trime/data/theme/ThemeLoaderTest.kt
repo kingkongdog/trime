@@ -5,26 +5,24 @@
 package com.osfans.trime.data.theme
 
 import android.util.Log
-import com.osfans.trime.util.yaml.Node
-import com.osfans.trime.util.yaml.Yaml
-import com.osfans.trime.util.yaml.get
-import com.osfans.trime.util.yaml.mapping
-import com.osfans.trime.util.yaml.string
+import com.charleskorn.kaml.YamlNode
+import com.osfans.trime.util.mapping
+import com.osfans.trime.util.pairs
+import com.osfans.trime.util.string
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import timber.log.Timber
 import java.io.File
 
 class ThemeLoaderTest :
     BehaviorSpec({
-        fun node(yaml: String): Node = Yaml.parseToYamlNode(yaml)
+        fun node(yaml: String): YamlNode = ThemeTestSupport.yaml.parseToYamlNode(yaml)
 
-        fun resources(vararg pairs: Pair<String, String>): (String) -> Node? {
+        fun resources(vararg pairs: Pair<String, String>): (String) -> YamlNode? {
             val map = pairs.toMap()
             return { id -> map[id]?.let(::node) }
         }
@@ -43,7 +41,7 @@ class ThemeLoaderTest :
         Given("the librime auto-patch convention") {
             Then("the patch of '<id>.custom.yaml' is injected as an optional __patch reference") {
                 val patched = ThemeLoader.applyCustomPatch("theme", source)
-                patched.mapping!!["__patch"]!!.string shouldBe "theme.custom:/patch?"
+                patched.mapping!!.pairs["__patch"]!!.string shouldBe "theme.custom:/patch?"
             }
 
             Then("the injected patch wins over the resource") {
@@ -67,7 +65,7 @@ class ThemeLoaderTest :
                     )
                 // The patch is `{name: from_custom}`, taken from the custom file's
                 // own `base`; resolving it in the theme file would say from_theme.
-                expanded.mapping!!["name"]!!.string shouldBe "from_custom"
+                expanded.mapping!!.pairs["name"]!!.string shouldBe "from_custom"
             }
 
             Then("a .schema resource is patched through its matching .custom file") {
@@ -170,7 +168,7 @@ class ThemeLoaderTest :
 
             Then("an explicit file wins over the loader cache") {
                 val loader = ThemeLoader.SourceLoader { null }
-                fun nameOf(file: File): String? = loader.load("theme", file)?.mapping?.get("name")?.string
+                fun nameOf(file: File): String? = loader.load("theme", file)?.mapping?.pairs?.get("name")?.string
                 nameOf(sourceFile("name: first\n")) shouldBe "first"
                 nameOf(sourceFile("name: second\n")) shouldBe "second"
             }
@@ -207,7 +205,7 @@ class ThemeLoaderTest :
                     "name_source: from_include\nname:\n  __include: /name_source\n",
                 )
                 val sources = ThemeLoader.SourceLoader { null }
-                ThemeLoader.loadSourceNode("included", file, sources)?.mapping?.get("name")?.string shouldBe "from_include"
+                ThemeLoader.loadSourceNode("included", file, sources)?.mapping?.pairs?.get("name")?.string shouldBe "from_include"
             }
 
             Then("a source outside the supported DSL is not expanded") {
@@ -232,7 +230,7 @@ class ThemeLoaderTest :
                 decoded.name shouldBe "base"
                 val letter = decoded.presetKeyboards.getValue("letter")
                 letter.name shouldBe "default"
-                letter.asciiMode shouldBe true
+                letter.asciiMode shouldBe 1
             }
 
             Then("decodeSource resolves cross-resource references through the loader") {
@@ -253,7 +251,7 @@ class ThemeLoaderTest :
                 decoded.name shouldBe "base"
                 val letter = decoded.presetKeyboards.getValue("letter")
                 letter.name shouldBe "shared"
-                letter.asciiMode shouldBe true
+                letter.asciiMode shouldBe 1
                 letter.keys.size shouldBe 1
             }
         }

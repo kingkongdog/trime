@@ -26,7 +26,6 @@ import com.osfans.trime.daemon.RimeSession
 import com.osfans.trime.daemon.launchOnReady
 import com.osfans.trime.data.db.ClipboardHelper
 import com.osfans.trime.data.prefs.AppPrefs
-import com.osfans.trime.data.theme.KeyActionManager
 import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.ime.bar.ui.AlwaysUi
@@ -72,7 +71,7 @@ class InputBarDelegate(override val di: DI) :
     private val candidate: CompactCandidateDelegate by instance()
     private val rime: RimeSession by instance()
 
-    val themedHeight = theme.generalStyle.run { candidateViewHeight + commentHeight }
+    val themedHeight = theme.style.run { candidateViewHeight + commentHeight }
 
     private val prefs = AppPrefs.defaultInstance()
 
@@ -134,7 +133,7 @@ class InputBarDelegate(override val di: DI) :
     private val alwaysUi: AlwaysUi by lazy {
         AlwaysUi(context, scope) { action ->
             if (action.isNotEmpty()) {
-                commonKeyboardActionListener.listener.onAction(KeyActionManager.getAction(action))
+                commonKeyboardActionListener.listener.onAction(theme.resolveAction(action))
             } else {
                 windowManager.attachWindow(SwitchOptionWindow(di))
             }
@@ -254,8 +253,8 @@ class InputBarDelegate(override val di: DI) :
                 scope.decorDrawable(
                     "candidate_background",
                     "candidate_border_color",
-                    dp(theme.generalStyle.candidateBorder),
-                    dp(theme.generalStyle.candidateBorderRound),
+                    dp(theme.style.candidateBorder),
+                    dp(theme.style.candidateBorderRound),
                 )
             add(alwaysUi.root, lParams(matchParent, matchParent))
             add(candidateUi.root, lParams(matchParent, matchParent))
@@ -273,8 +272,8 @@ class InputBarDelegate(override val di: DI) :
             scope.decorDrawable(
                 "candidate_background",
                 "candidate_border_color",
-                context.dp(theme.generalStyle.candidateBorder),
-                context.dp(theme.generalStyle.candidateBorderRound),
+                context.dp(theme.style.candidateBorder),
+                context.dp(theme.style.candidateBorderRound),
             )
         alwaysUi.refreshColors()
         candidateUi.refreshColors()

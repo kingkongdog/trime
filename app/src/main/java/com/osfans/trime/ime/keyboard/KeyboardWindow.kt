@@ -13,11 +13,9 @@ import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
 import androidx.core.content.ContextCompat
 import com.osfans.trime.R
-import com.osfans.trime.core.CompositionProto
 import com.osfans.trime.core.RimeMessage
 import com.osfans.trime.core.SchemaItem
 import com.osfans.trime.daemon.RimeSession
-import com.osfans.trime.data.theme.KeyActionManager
 import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.model.TextKeyboard
 import com.osfans.trime.ime.broadcast.EnterKeyDisplayDelegate
@@ -130,7 +128,7 @@ class KeyboardWindow(di: DI) :
             return containerWidth
         }
 
-        val padding = theme.generalStyle.run {
+        val padding = theme.style.run {
             if (context.isLandscapeMode()) keyboardPaddingLand else keyboardPadding
         }
 
@@ -338,7 +336,7 @@ class KeyboardWindow(di: DI) :
                 }
                 tempAsciiMode = null
             } ?: activeKeyboard?.let {
-                if (theme.generalStyle.resetAsciiModeOnFocusChange) {
+                if (theme.style.resetAsciiModeOnFocusChange) {
                     val targetMode = if (it.resetAsciiMode) it.asciiMode else it.lastAsciiMode
                     if (isAsciiMode != targetMode) {
                         service.postRimeJob { setRuntimeOption("ascii_mode", targetMode) }
@@ -351,7 +349,7 @@ class KeyboardWindow(di: DI) :
     private fun dispatchCapsState(setShift: (Boolean, Boolean) -> Unit) {
         val status = rime.run { statusCached }
         // TODO: 启用自动首句大写后，点击方向键时，保持Shift锁定状态功能将无法生效
-        if (theme.generalStyle.autoCaps && status.isAsciiMode && currentKeyboardView?.isCapsOn == false) {
+        if (theme.style.autoCaps == true && status.isAsciiMode && currentKeyboardView?.isCapsOn == false) {
             setShift(false, cursorCapsMode != 0)
         }
     }
@@ -392,7 +390,7 @@ class KeyboardWindow(di: DI) :
                 if (what.isNotEmpty() && value.value) {
                     commonKeyboardActionListener
                         .listener
-                        .onAction(KeyActionManager.getAction(what))
+                        .onAction(theme.resolveAction(what))
                 }
             }
         }

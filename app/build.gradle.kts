@@ -84,11 +84,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    // hack workaround lint gradle 8.0.2
-    lint {
-        checkReleaseBuilds = false
-    }
-
     testOptions {
         unitTests.all {
             it.useJUnitPlatform()
@@ -157,7 +152,7 @@ dependencies {
     implementation(libs.timber)
     implementation(libs.xxpermissions)
     implementation(libs.kodein.di)
-    implementation(libs.snakeyaml)
+    implementation(libs.kaml)
     implementation(libs.splitties.bitflags)
     implementation(libs.splitties.systemservices)
     implementation(libs.splitties.views.dsl)

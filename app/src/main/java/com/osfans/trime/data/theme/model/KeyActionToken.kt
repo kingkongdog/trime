@@ -5,36 +5,27 @@
 
 package com.osfans.trime.data.theme.model
 
-import android.os.Parcelable
-import com.osfans.trime.util.yaml.Node
-import com.osfans.trime.util.yaml.string
-import kotlinx.parcelize.Parcelize
+import com.osfans.trime.util.string
+import kotlinx.serialization.Serializable
 
-@Parcelize
-sealed class KeyActionToken : Parcelable {
-    data class Plain(val token: String) : KeyActionToken()
-    data class Inline(val token: Token) : KeyActionToken() {
-        @Parcelize
-        data class Token(
-            val commit: String?,
-            val text: String?,
-            val label: String?,
-        ) : Parcelable
-    }
+@Serializable(with = KeyActionTokenSerializer::class)
+sealed interface KeyActionToken {
+    @Serializable
+    @JvmInline
+    value class Plain(val token: String) : KeyActionToken
 
-    companion object {
-        fun decode(node: Node?): KeyActionToken? = when (node) {
-            is Node.Scalar -> Plain(node.string)
-
-            is Node.Mapping -> Inline(
-                Inline.Token(
-                    commit = node["commit"]?.string,
-                    text = node["text"]?.string,
-                    label = node["label"]?.string,
-                ),
-            )
-
-            else -> null
-        }
-    }
+    @Serializable
+    data class Inline(
+        val commit: String? = null,
+        val text: String? = null,
+        val label: String? = null,
+    ) : KeyActionToken
 }
+
+/**
+ * A blank plain token means "no action": librime's empty scalar is how a theme
+ * unsets a behavior inherited from a keyboard preset. An absent field already
+ * decodes to null, so only the blank string case needs normalizing.
+ */
+val KeyActionToken?.orAbsent: KeyActionToken?
+    get() = if (this is KeyActionToken.Plain && token.isEmpty()) null else this
