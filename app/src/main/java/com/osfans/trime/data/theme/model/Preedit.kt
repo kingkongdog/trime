@@ -21,23 +21,5 @@ data class Preedit(
     @Serializable
     data class Foreground(
         val fontSize: Float = 16f,
-    ) : Parcelable {
-        companion object {
-            fun decode(node: Node.Mapping?): Foreground = Foreground(
-                fontSize = node?.get("font_size")?.float ?: 16f,
-            )
-        }
-    }
-
-    companion object {
-        fun decode(node: Node.Mapping?): Preedit = Preedit(
-            horizontalPadding = node?.get("horizontal_padding")?.int ?: 8,
-            paddingTop = node?.get("padding_top")?.int ?: 0,
-            paddingBottom = node?.get("padding_bottom")?.int ?: 0,
-            topStartRadius = node?.get("top_start_radius")?.float ?: 0f,
-            topEndRadius = node?.get("top_end_radius")?.float ?: 0f,
-            alpha = node?.get("alpha")?.float ?: 0.8f,
-            foreground = Foreground.decode(node?.get("foreground")?.mapping),
-        )
-    }
+    )
 }

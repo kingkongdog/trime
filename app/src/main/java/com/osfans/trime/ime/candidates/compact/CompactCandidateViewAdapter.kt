@@ -67,7 +67,7 @@ open class CompactCandidateViewAdapter(
         val ui = CandidateItemUi(context, scope)
         ui.root.apply {
             minimumWidth = dp(40)
-            val size = theme.generalStyle.candidatePadding
+            val size = theme.style.candidatePadding
             setPaddingDp(size, 0, size, 0)
             layoutParams = FlexboxLayoutManager.LayoutParams(wrapContent, matchParent)
         }

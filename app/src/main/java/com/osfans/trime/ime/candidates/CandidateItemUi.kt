@@ -63,7 +63,7 @@ class CandidateItemUi(
     private val commentVerticalBias = theme.style.commentVerticalBias
     private val candidateTextVerticalBias = theme.style.candidateTextVerticalBias
 
-    private val commentHeight = ctx.dp(theme.generalStyle.commentHeight)
+    private val commentHeight = ctx.dp(theme.style.commentHeight)
 
     private val text =
         view(::AutoScaleTextView) {
