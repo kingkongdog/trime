@@ -1,8 +1,9 @@
-// SPDX-FileCopyrightText: 2015 - 2026 Rime community
-//
-// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * SPDX-FileCopyrightText: 2015 - 2026 Rime community
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
 
-package com.osfans.trime.data.base
+package com.osfans.trime.core.data
 
 import android.content.res.AssetManager
 import android.os.Build
@@ -16,24 +17,7 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 object DataManager {
-    const val DEFAULT_CUSTOM_FILE_NAME = "default.custom.yaml"
-    const val USER_CONFIG_FILE_NAME = "user.yaml"
-    const val INSTALLATION_FILE_NAME = "installation.yaml"
-
-    val POST_SCHEMA_DEPLOY_EXPORT_FILES =
-        listOf(
-            DEFAULT_CUSTOM_FILE_NAME,
-            USER_CONFIG_FILE_NAME,
-        )
-
     private const val DATA_CHECKSUMS_NAME = "checksums.json"
-
-    private const val SCHEMA_LIST_CUSTOM_PATCH = """
-      patch:
-        schema_list:
-          - schema: luna_pinyin
-          - schema: luna_pinyin_simp
-    """
 
     private val lock = ReentrantLock()
 
@@ -107,13 +91,6 @@ object DataManager {
 
         destChecksumsFile.bufferedWriter().use {
             it.write(serializeDataChecksums(newChecksums))
-        }
-
-        val custom = userDataDir.resolve(DEFAULT_CUSTOM_FILE_NAME)
-        if (!custom.exists()) {
-            if (custom.createNewFile()) {
-                custom.writeText(SCHEMA_LIST_CUSTOM_PATCH.trimIndent())
-            }
         }
 
         Timber.d("Synced!")
