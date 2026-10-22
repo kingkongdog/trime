@@ -18,6 +18,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <application
         android:name="com.osfans.trime.TrimeApplication"
         android:allowBackup="true"
