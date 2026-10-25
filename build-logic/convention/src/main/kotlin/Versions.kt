@@ -4,7 +4,7 @@
 
 object Versions {
     const val DEFAULT_CMAKE = "3.31.6"
-    const val DEFAULT_NDK = "28.0.13004108"
+    const val DEFAULT_NDK = "30.0.16248370"
 
     val supportedAbis = setOf("arm64-v8a")
 }
