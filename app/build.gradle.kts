@@ -23,7 +23,7 @@ android {
 
     defaultConfig {
         applicationId = "com.osfans.trime"
-        minSdk = 21
+        minSdk = 26
         targetSdk = 37
         versionCode = 20270101
         versionName = "3.3.14"
@@ -135,7 +135,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.autofill)
     implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core)
     implementation(libs.androidx.navigation.fragment)
     implementation(libs.androidx.navigation.ui)
     implementation(libs.androidx.paging.runtime.ktx)

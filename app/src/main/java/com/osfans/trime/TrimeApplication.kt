@@ -11,7 +11,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.Configuration
-import android.os.Build
 import android.os.Process
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -35,6 +34,7 @@ import splitties.systemservices.userManager
 import timber.log.Timber
 import java.io.File
 import kotlin.system.exitProcess
+import androidx.work.Configuration as WorkConfiguration
 
 /**
  * Custom Application class.
@@ -42,8 +42,19 @@ import kotlin.system.exitProcess
  * so you can init a "global" class here, whose methods serve other
  * classes everywhere.
  */
-class TrimeApplication : Application() {
+class TrimeApplication :
+    Application(),
+    WorkConfiguration.Provider {
     val coroutineScope = MainScope() + CoroutineName("TrimeApplication")
+
+    /**
+     * WorkManager is initialized on demand instead of via its default startup initializer,
+     * which is removed in AndroidManifest.xml. The default initializer runs even in direct
+     * boot mode, where WorkManager cannot be initialized, so initialization is deferred until
+     * the first real use (see [startWorkManager]).
+     */
+    override val workManagerConfiguration: WorkConfiguration
+        get() = WorkConfiguration.Builder().build()
 
     private val rimeIntentReceiver = RimeIntentReceiver()
 
@@ -80,7 +91,7 @@ class TrimeApplication : Application() {
         private set
 
     val directBootAwareContext: Context
-        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isDirectBootMode) {
+        get() = if (isDirectBootMode) {
             createDeviceProtectedStorageContext()
         } else {
             applicationContext
@@ -93,7 +104,7 @@ class TrimeApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !userManager.isUserUnlocked) {
+        if (!userManager.isUserUnlocked) {
             isDirectBootMode = true
             registerReceiver(unlockReceiver, IntentFilter(Intent.ACTION_USER_UNLOCKED))
         }
@@ -182,7 +193,7 @@ class TrimeApplication : Application() {
             }
             ClipboardHelper.init(ctx)
             CollectionHelper.init(ctx)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !isDirectBootMode) {
+            if (!isDirectBootMode) {
                 AppPrefs.defaultInstance().syncToDeviceEncryptedStorage()
                 ThemeManager.syncToDeviceEncryptedStorage()
             }
