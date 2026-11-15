@@ -27,45 +27,34 @@ class ThemeFonts(private val theme: Theme) {
 
     private val fontDir get() = File(DataManager.userDataDir, "fonts")
 
-    private val fontFamilyCache =
-        object : androidx.collection.LruCache<FileState, FontFamily>(16) {}
+    // Deduplication, not a limit: the roles below keep every entry for the life of the theme.
+    // An LRU could only drop a family that a live Typeface still refers to, and the next role
+    // would then load the same file a second time.
+    private val fontFamilyCache = mutableMapOf<FileState, FontFamily>()
 
-    private val typefaceCache =
-        object : androidx.collection.LruCache<TypefaceKey, Typeface>(16 * 1024) {
-            override fun sizeOf(key: TypefaceKey, value: Typeface): Int = key.files.sumOf {
-                (it.size / 1024).toInt().coerceAtLeast(1)
-            }
-        }
+    private val typefaceCache = mutableMapOf<TypefaceKey, Typeface>()
 
-    val hanb: Typeface
-        get() = getTypeface(style.hanbFont.toList())
+    // Font names only change with the theme, so resolve each role once instead of
+    // touching the font files on every access.
+    val hanb: Typeface by lazy { getTypeface(style.hanbFont.toList()) }
 
-    val latin: Typeface
-        get() = getTypeface(style.latinFont.toList())
+    val latin: Typeface by lazy { getTypeface(style.latinFont.toList()) }
 
-    val candidate: Typeface
-        get() = getTypeface(style.candidateFont.toList())
+    val candidate: Typeface by lazy { getTypeface(style.candidateFont.toList()) }
 
-    val comment: Typeface
-        get() = getTypeface(style.commentFont.toList())
+    val comment: Typeface by lazy { getTypeface(style.commentFont.toList()) }
 
-    val key: Typeface
-        get() = getTypeface(style.keyFont.toList())
+    val key: Typeface by lazy { getTypeface(style.keyFont.toList()) }
 
-    val label: Typeface
-        get() = getTypeface(style.labelFont.toList())
+    val label: Typeface by lazy { getTypeface(style.labelFont.toList()) }
 
-    val popup: Typeface
-        get() = getTypeface(style.popupFont.toList())
+    val popup: Typeface by lazy { getTypeface(style.popupFont.toList()) }
 
-    val symbol: Typeface
-        get() = getTypeface(style.symbolFont.toList())
+    val symbol: Typeface by lazy { getTypeface(style.symbolFont.toList()) }
 
-    val text: Typeface
-        get() = getTypeface(style.textFont.toList())
+    val text: Typeface by lazy { getTypeface(style.textFont.toList()) }
 
-    val toolbar: Typeface
-        get() = getTypeface(theme.toolBar.buttonFont.toList())
+    val toolbar: Typeface by lazy { getTypeface(theme.toolBar.buttonFont.toList()) }
 
     private fun makeFileStateList(names: List<String>): List<FileState> = names.asSequence()
         .map { File(fontDir, it) }
@@ -84,10 +73,9 @@ class ThemeFonts(private val theme: Theme) {
 
     private fun getTypeface(fonts: List<String>): Typeface {
         val key = resolveKey(fonts)
-        val typeface = typefaceCache[key]
-        return if (typeface == null) {
+        return typefaceCache.getOrPut(key) {
             Timber.d("getTypeface: key=$key")
-            val newTypeface = if (key.files.isEmpty()) {
+            if (key.files.isEmpty()) {
                 Typeface.DEFAULT
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val bulk = makeFileStateList(style.latinFont.toList() + fonts + style.hanbFont.toList())
@@ -103,24 +91,11 @@ class ThemeFonts(private val theme: Theme) {
             } else {
                 Typeface.createFromFile(key.files.first().path)
             }
-            typefaceCache.put(key, newTypeface)
-            newTypeface
-        } else {
-            typeface
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
-    private fun getFontFamily(state: FileState): FontFamily {
-        val family = fontFamilyCache[state]
-        return if (family == null) {
-            val newFamily = FontFamily.Builder(
-                Font.Builder(File(state.path)).build(),
-            ).build()
-            fontFamilyCache.put(state, newFamily)
-            newFamily
-        } else {
-            family
-        }
+    private fun getFontFamily(state: FileState): FontFamily = fontFamilyCache.getOrPut(state) {
+        FontFamily.Builder(Font.Builder(File(state.path)).build()).build()
     }
 }

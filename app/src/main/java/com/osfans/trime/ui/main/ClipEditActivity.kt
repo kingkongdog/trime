@@ -11,9 +11,8 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
-import com.osfans.trime.data.db.ClipboardHelper
-import com.osfans.trime.data.db.CollectionHelper
-import com.osfans.trime.data.db.DatabaseBean
+import com.osfans.trime.data.clip.ClipboardHelper
+import com.osfans.trime.data.clip.FavoriteHelper
 import com.osfans.trime.databinding.ActivityClipEditBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
@@ -24,7 +23,7 @@ import timber.log.Timber
 
 class ClipEditActivity : Activity() {
     private val scope: CoroutineScope = MainScope()
-    private var beanId: Int = -1
+    private var entityId: Int = -1
     private lateinit var editText: EditText
     private var clipType: String? = null
 
@@ -46,17 +45,20 @@ class ClipEditActivity : Activity() {
         val str = editText.editableText.toString()
         scope.launch {
             when (clipType) {
-                FROM_CLIPBOARD -> ClipboardHelper.updateText(beanId, str)
-                FROM_COLLECTION -> CollectionHelper.updateText(beanId, str)
+                FROM_CLIPBOARD -> ClipboardHelper.updateText(entityId, str)
+                FROM_COLLECTION -> FavoriteHelper.updateText(entityId, str)
                 else -> {}
             }
         }
         finish()
     }
 
-    private fun setBean(bean: DatabaseBean) {
-        beanId = bean.id
-        editText.setText(bean.text)
+    private fun setEntity(
+        id: Int,
+        text: String,
+    ) {
+        entityId = id
+        editText.setText(text)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -68,15 +70,20 @@ class ClipEditActivity : Activity() {
         scope.launch {
             intent.run {
                 val clipType = intent.getStringExtra(CLIP_TYPE) ?: return@launch
-                val beanId = getIntExtra(BEAN_ID, -1)
-                Timber.d("processIntent: id=$beanId, type=$clipType")
+                val entityId = getIntExtra(ENTITY_ID, -1)
+                Timber.d("processIntent: id=$entityId, type=$clipType")
                 when (clipType) {
-                    FROM_CLIPBOARD -> ClipboardHelper.get(beanId)
-                    FROM_COLLECTION -> CollectionHelper.get(beanId)
-                    else -> null
-                }?.also {
-                    this@ClipEditActivity.clipType = clipType
-                    setBean(it)
+                    FROM_CLIPBOARD ->
+                        ClipboardHelper.get(entityId)?.let {
+                            this@ClipEditActivity.clipType = clipType
+                            setEntity(it.id, it.text)
+                        }
+
+                    FROM_COLLECTION ->
+                        FavoriteHelper.get(entityId)?.let {
+                            this@ClipEditActivity.clipType = clipType
+                            setEntity(it.id, it.text)
+                        }
                 }
             }
         }
@@ -93,7 +100,7 @@ class ClipEditActivity : Activity() {
     }
 
     companion object {
-        const val BEAN_ID = "id"
+        const val ENTITY_ID = "id"
         const val CLIP_TYPE = "clip_type"
         const val FROM_CLIPBOARD = "from_clipboard"
         const val FROM_COLLECTION = "from_collection"

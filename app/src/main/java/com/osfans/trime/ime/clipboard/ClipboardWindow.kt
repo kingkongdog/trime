@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015 - 2025 Rime community
+ * SPDX-FileCopyrightText: 2015 - 2026 Rime community
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -12,10 +12,10 @@ import android.view.View
 import androidx.lifecycle.lifecycleScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
+import androidx.paging.map
 import com.osfans.trime.R
-import com.osfans.trime.data.db.ClipboardHelper
-import com.osfans.trime.data.db.CollectionHelper
-import com.osfans.trime.data.db.DatabaseBean
+import com.osfans.trime.data.clip.ClipboardHelper
+import com.osfans.trime.data.clip.FavoriteHelper
 import com.osfans.trime.data.prefs.AppPrefs
 import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeScope
@@ -28,6 +28,7 @@ import com.osfans.trime.ime.window.BoardWindowManager
 import com.osfans.trime.ui.main.ClipEditActivity
 import com.osfans.trime.util.AppUtils
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.kodein.di.DI
 import org.kodein.di.instance
@@ -46,21 +47,21 @@ class ClipboardWindow(di: DI, private val initialTab: Int = 0) : BoardWindow.Bar
 
     private val prefs = AppPrefs.defaultInstance().clipboard
     private val clipboardReturnAfterPaste by prefs.clipboardReturnAfterPaste
+    private val clipboardMaskSensitive by prefs.clipboardMaskSensitive
 
-    private val clipboardBeansPager by lazy {
-        Pager(PagingConfig(pageSize = 16)) { ClipboardHelper.allBeans() }
+    private val clipboardEntitiesPager by lazy {
+        Pager(PagingConfig(pageSize = 16)) { ClipboardHelper.allEntities() }
     }
-    private val collectionBeansPager by lazy {
-        Pager(PagingConfig(pageSize = 16)) { CollectionHelper.allBeans() }
+    private val favoriteEntitiesPager by lazy {
+        Pager(PagingConfig(pageSize = 16)) { FavoriteHelper.allEntities() }
     }
-    private var clipboardBeansSubmitJob: Job? = null
-    private var collectionBeansSubmitJob: Job? = null
+    private var clipboardEntitiesSubmitJob: Job? = null
+    private var favoriteEntitiesSubmitJob: Job? = null
 
-    private val clipboardBeansAdapter by lazy {
-        object : ClipboardAdapter(scope) {
-            override fun onPaste(bean: DatabaseBean) {
-                val text = bean.text ?: return
-                service.commitText(text)
+    private val clipboardEntitiesAdapter by lazy {
+        object : ClipboardAdapter(scope, clipboardMaskSensitive) {
+            override fun onPaste(item: ClipboardItem) {
+                service.commitText(item.text)
                 if (clipboardReturnAfterPaste) {
                     windowManager.attachWindow(KeyboardWindow)
                 }
@@ -78,35 +79,30 @@ class ClipboardWindow(di: DI, private val initialTab: Int = 0) : BoardWindow.Bar
                 AppUtils.launchClipEdit(context, id, ClipEditActivity.FROM_CLIPBOARD)
             }
 
-            override fun onShare(bean: DatabaseBean) {
-                val text = bean.text ?: return
-                launchTextSharing(text)
+            override fun onShare(item: ClipboardItem) {
+                launchTextSharing(item.text)
             }
 
-            override fun onSegment(bean: DatabaseBean) {
-                val text = bean.text ?: return
-                windowManager.attachWindow(SegmentsWindow(di, text))
+            override fun onSegment(item: ClipboardItem) {
+                windowManager.attachWindow(SegmentsWindow(di, item.text, item.mask))
             }
 
-            override fun onCollect(bean: DatabaseBean) {
-                service.lifecycleScope.launch {
-                    CollectionHelper.addNewBean(bean.text ?: "")
-                }
+            override fun onFavorite(item: ClipboardItem) {
+                FavoriteHelper.addNewEntity(item.text)
             }
 
             override fun onDelete(id: Int) {
                 service.lifecycleScope.launch { ClipboardHelper.delete(id) }
             }
 
-            override val enableCollection: Boolean = true
+            override val enableClipActions: Boolean = true
         }
     }
 
-    private val collectionBeansAdapter by lazy {
-        object : ClipboardAdapter(scope) {
-            override fun onPaste(bean: DatabaseBean) {
-                val text = bean.text ?: return
-                service.commitText(text)
+    private val favoriteEntitiesAdapter by lazy {
+        object : ClipboardAdapter(scope, false) {
+            override fun onPaste(item: ClipboardItem) {
+                service.commitText(item.text)
                 if (clipboardReturnAfterPaste) {
                     windowManager.attachWindow(KeyboardWindow)
                 }
@@ -116,21 +112,19 @@ class ClipboardWindow(di: DI, private val initialTab: Int = 0) : BoardWindow.Bar
                 AppUtils.launchClipEdit(context, id, ClipEditActivity.FROM_COLLECTION)
             }
 
-            override fun onShare(bean: DatabaseBean) {
-                val text = bean.text ?: return
-                launchTextSharing(text)
+            override fun onShare(item: ClipboardItem) {
+                launchTextSharing(item.text)
             }
 
-            override fun onSegment(bean: DatabaseBean) {
-                val text = bean.text ?: return
-                windowManager.attachWindow(SegmentsWindow(di, text))
+            override fun onSegment(item: ClipboardItem) {
+                windowManager.attachWindow(SegmentsWindow(di, item.text, item.mask))
             }
 
             override fun onDelete(id: Int) {
-                service.lifecycleScope.launch { CollectionHelper.delete(id) }
+                service.lifecycleScope.launch { FavoriteHelper.delete(id) }
             }
 
-            override val enableCollection: Boolean = false
+            override val enableClipActions: Boolean = false
         }
     }
 
@@ -138,16 +132,16 @@ class ClipboardWindow(di: DI, private val initialTab: Int = 0) : BoardWindow.Bar
         ClipboardPageUi(context).apply {
             recyclerView.apply {
                 layoutManager = verticalLayoutManager()
-                adapter = clipboardBeansAdapter
+                adapter = clipboardEntitiesAdapter
             }
         }
     }
 
-    private val collectionPage by lazy {
+    private val favoritePage by lazy {
         ClipboardPageUi(context).apply {
             recyclerView.apply {
                 layoutManager = verticalLayoutManager()
-                adapter = collectionBeansAdapter
+                adapter = favoriteEntitiesAdapter
             }
         }
     }
@@ -158,7 +152,7 @@ class ClipboardWindow(di: DI, private val initialTab: Int = 0) : BoardWindow.Bar
             override fun getItemCount(): Int = 2
             override fun onCreatePage(position: Int): ClipboardPageUi = when (position) {
                 0 -> clipboardPage
-                else -> collectionPage
+                else -> favoritePage
             }
         }
         viewPager.apply {
@@ -176,7 +170,7 @@ class ClipboardWindow(di: DI, private val initialTab: Int = 0) : BoardWindow.Bar
                     }
 
                     else -> promptDeleteAll {
-                        CollectionHelper.deleteAll(CollectionHelper.haveUnpinned())
+                        FavoriteHelper.deleteAll()
                     }
                 }
             }
@@ -227,23 +221,27 @@ class ClipboardWindow(di: DI, private val initialTab: Int = 0) : BoardWindow.Bar
     override fun onAttached() {
         wasAttached = true
         clipboardLayout.viewPager.setCurrentItem(initialTab, false)
-        clipboardBeansSubmitJob = service.lifecycleScope.launch {
-            clipboardBeansPager.flow.collect {
-                clipboardBeansAdapter.submitData(it)
-            }
+        clipboardEntitiesSubmitJob = service.lifecycleScope.launch {
+            clipboardEntitiesPager.flow
+                .map { pagingData -> pagingData.map { it.toClipboardItem() } }
+                .collect {
+                    clipboardEntitiesAdapter.submitData(it)
+                }
         }
-        collectionBeansSubmitJob = service.lifecycleScope.launch {
-            collectionBeansPager.flow.collect {
-                collectionBeansAdapter.submitData(it)
-            }
+        favoriteEntitiesSubmitJob = service.lifecycleScope.launch {
+            favoriteEntitiesPager.flow
+                .map { pagingData -> pagingData.map { it.toClipboardItem() } }
+                .collect {
+                    favoriteEntitiesAdapter.submitData(it)
+                }
         }
     }
 
     override fun onDetached() {
-        clipboardBeansAdapter.dismissPopupMenu()
-        collectionBeansAdapter.dismissPopupMenu()
-        clipboardBeansSubmitJob?.cancel()
-        collectionBeansSubmitJob?.cancel()
+        clipboardEntitiesAdapter.dismissPopupMenu()
+        favoriteEntitiesAdapter.dismissPopupMenu()
+        clipboardEntitiesSubmitJob?.cancel()
+        favoriteEntitiesSubmitJob?.cancel()
     }
 
     override fun refreshColors() {
@@ -252,8 +250,8 @@ class ClipboardWindow(di: DI, private val initialTab: Int = 0) : BoardWindow.Bar
         clipboardLayout.titleUi.tabLayout.reconfigureTabs { tabUi, position ->
             configureTab(tabUi, position)
         }
-        clipboardBeansAdapter.refreshColors()
-        collectionBeansAdapter.refreshColors()
+        clipboardEntitiesAdapter.refreshColors()
+        favoriteEntitiesAdapter.refreshColors()
     }
 
     override fun onCreateBarView(): View = clipboardLayout.titleUi.root
